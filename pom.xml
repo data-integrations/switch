@@ -32,11 +32,13 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <cdap.version>6.1.2</cdap.version>
     <cdap.plugin.version>2.2.0</cdap.plugin.version>
+    <guava.version>20.0</guava.version>
+    <slf4j.version>1.7.5</slf4j.version>
     <!-- This is the version range for the app.parents that this plugin is valid for. Usually this will correspond with
          the CDAP version, but not always. -->
     <etl.versionRange>[6.1.0-SNAPSHOT,7.0.0-SNAPSHOT)</etl.versionRange>
     <!-- This is the list of packages where your code exists. You can add multiple and separated with a ; or use wildcards *. -->
-    <exported-packages>io.cdap.plugin.switch.*</exported-packages>
+    <exported-packages>io.cdap.plugin.switchcase.route.*</exported-packages>
   </properties>
 
   <repositories>
@@ -62,6 +64,17 @@
       <artifactId>cdap-etl-api</artifactId>
       <version>${cdap.version}</version>
       <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-api</artifactId>
+      <version>${slf4j.version}</version>
+      <scope>provided</scope>
+    </dependency>
+    <dependency>
+      <groupId>com.google.guava</groupId>
+      <artifactId>guava</artifactId>
+      <version>${guava.version}</version>
     </dependency>
     <dependency>
       <groupId>io.cdap.cdap</groupId>

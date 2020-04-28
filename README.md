@@ -8,13 +8,8 @@ A collection of plugins that provide switch...case transforms for [CDAP Pipeline
 
 The following plugins are included:
 
-1. SwitchRouter: This is a splitter transform plugin for  that can help you route records to a given output port, based on predefined rules.
-
-It is fully open source under the Apache 2.0 license.
-
-## Documentation
-
-The docs for the plugin can be found at [Record Router](docs/RecordRouter-splittertransform.md).
+1. **[Routing Switch](docs/RoutingSwitch-splittertransform.md):** A splitter transform plugin that can route records 
+to a given output port, based on predefined rules applied on one of the fields in the input.
 
 ## Need Help?
 

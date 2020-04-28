@@ -14,10 +14,26 @@
  * the License.
  */
 
-package io.cdap.plugin.switchcase;
+package io.cdap.plugin.switchcase.route;
 
 /**
- * Tests for {@link SwitchRouter} plugin
+ * Exception thrown when the port to route a record cannot be determined using the port specification
  */
-public class SwitchRouterTest {
+public class PortNotSpecifiedException extends Exception {
+
+  private final Reason reason;
+
+  public PortNotSpecifiedException(Reason reason) {
+    super(String.format("Couldn't find the right port for the record, because of a %s value", reason));
+    this.reason = reason;
+  }
+
+  public boolean isDefaultValue() {
+    return Reason.DEFAULT == reason;
+  }
+
+  enum Reason {
+    DEFAULT,
+    NULL
+  }
 }
