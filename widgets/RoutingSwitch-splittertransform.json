@@ -25,18 +25,78 @@
               "alias": "Port name"
             },
             "dropdownOptions": [
-              "Equals",
-              "Not Equals",
-              "Contains",
-              "Not Contains",
-              "In",
-              "Not In",
-              "Matches",
-              "Not Matches",
-              "Starts With",
-              "Not Starts With",
-              "Ends With",
-              "Not Ends With"
+              {
+                "label": "Equals",
+                "value": "equals"
+              },
+              {
+                "label": "Not Equals",
+                "value": "not_equals"
+              },
+              {
+                "label": "Contains",
+                "value": "contains"
+              },
+              {
+                "label": "Not Contains",
+                "value": "not_contains"
+              },
+              {
+                "label": "In",
+                "value": "in"
+              },
+              {
+                "label": "Not In",
+                "value": "not_in"
+              },
+              {
+                "label": "Matches",
+                "value": "matches"
+              },
+              {
+                "label": "Not Matches",
+                "value": "not_matches"
+              },
+              {
+                "label": "Starts With",
+                "value": "starts_with"
+              },
+              {
+                "label": "Not Starts With",
+                "value": "not_starts_with"
+              },
+              {
+                "label": "Ends With",
+                "value": "ends_with"
+              },
+              {
+                "label": "Not Ends With",
+                "value": "not_ends_with"
+              },
+              {
+                "label": "Number Equals",
+                "value": "number_equals"
+              },
+              {
+                "label": "Number Not Equals",
+                "value": "number_not_equals"
+              },
+              {
+                "label": "Number Greater Than",
+                "value": "number_greater_than"
+              },
+              {
+                "label": "Number Greater Than or Equals",
+                "value": "number_greater_than_or_equals"
+              },
+              {
+                "label": "Number Lesser Than",
+                "value": "number_lesser_than"
+              },
+              {
+                "label": "Number Lesser Than or Equals",
+                "value": "number_lesser_than_or_equals"
+              }
             ]
           },
           "plugin-function": {

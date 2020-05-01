@@ -22,9 +22,8 @@ applied, to determine the port where the record should be routed to.
 **Port Specification**: Specifies the rules to determine the port where the record should be routed to. Rules are
 applied on the value of the routing field. The port specification is expressed as a comma-separated list of rules,
 where each rule has the format ``[port-name]:[function-name]([parameter-name])``. ``[port-name]`` is the name of the 
-port to route the record to if the rule is satisfied. ``[function-name]`` can be one of _equals_, _not_equals_, 
-_contains_, _not_contains_, _in_, _not_in_, _matches_, _not_matches_, _starts_with_, _not_starts_with_, _ends_with_, 
-_not_ends_with_. ``[parameter-name]`` is the parameter based on which the selected function evaluates the value of the 
+port to route the record to if the rule is satisfied. Refer to the table below for a list of available functions. 
+``[parameter-name]`` is the parameter based on which the selected function evaluates the value of the 
 routing field.
 
 **Default handling**: Determines the way to handle records whose value for the field to match on doesn't match any of
@@ -41,3 +40,29 @@ either be skipped ("Skip"), sent to a specific port ("Send to null port"), or se
 
 **Null Port**: Determines the port to which records with null values for the field to split on are sent. This is only
 used if default handling is set to "Send to null port". Defaults to 'Null'.
+
+
+Supported Basic Functions
+-------------------------
+|Display Name|Name|Description|Example|
+|------------|----|-----------|-------|
+|Equals|`equals`|Checks for text equality|`equals(supplierA)`|
+|Not Equals|`not_equals`|Checks for text inequality|`not_equals(supplierA)`|
+|Contains|`contains`|Checks if the provided parameter is a substring of the data value|`contains(supp)`|
+|Not Contains|`not_contains`Checks if the provided parameter is not a substring of the data value|`not_contains(flip)`|
+|In|`in`|Checks if the data value is contained in a pipe-delimited list provided as an the parameter|`in(supplierA\|supplierB)`|
+|Not In|`not_in`|Checks if the data value is not contained in a pipe-delimited list provided as an the parameter|`not_in(supplierA\|supplierB)`|
+|Matches|`matches`|Checks if the data matches the provided regular expression. Supports [Java regular expression syntax](https://docs.oracle.com/javase/tutorial/essential/regex/).|`matches(.*lierA$)`|
+|Not Matches|`not_matches`|Checks if the data does not match the provided regular expression. Supports [Java regular expression syntax](https://docs.oracle.com/javase/tutorial/essential/regex/).|`not_matches(.*lierA$)`|
+|Starts With|`starts_with`|Checks if the provided parameter is a prefix of the data value|`starts_with(supp)`|
+|Not Starts With|`not_starts_with`|Checks if the provided parameter is not a prefix of the data value|`not_starts_with(flip)`|
+|Ends With|`ends_with`|Checks if the provided parameter is a suffix of the data value|`ends_with(lierA)`|
+|Not Ends With|`not_ends_with`|Checks if the provided parameter is not a suffix of the data value|`not_ends_with(flip)`|
+|Number Equals|`number_equals`|Checks if the data value is a number that equals the provided parameter. Supports the Java Numeric data types.|`number_equals(234523)`|
+|Number Not Equals|`number_not_equals`|Checks if the data value is a number that does not equal the provided parameter. Both the data and the provided parameter should be a number. Supports the Java Numeric data types.|`number_not_equals(234523)`|
+|Number Greater Than|`number_greater_than`|Checks if the data value is a number that is greater than the provided parameter. Both the data and the provided parameter should be a number. Supports the Java Numeric data types.|`number_greater_than(234523)`|
+|Number Greater Than or Equals|`number_greater_than_or_equals`|Checks if the data value is a number that is greater than or equal to the provided parameter. Both the data and the provided parameter should be a number. Supports the Java Numeric data types.|`number_not_equals(234523)`|
+|Number Lesser Than|`number_lesser_than`|Checks if the data value is a number that is lesser than the provided parameter. Both the data and the provided parameter should be a number. Supports the Java Numeric data types.|`number_greater_than(234523)`|
+|Number Lesser Than or Equals|`number_lesser_than_or_equals`|Checks if the data value is a number that is lesser than or equal to the provided parameter. Both the data and the provided parameter should be a number. Supports the Java Numeric data types.|`number_not_equals(234523)`|
+|Number Between|`number_between`|Checks if the data value is a number that is between a lower bound and an upper bound (both inclusive) specified in the provided parameter. The lower bound and upper bound should be specified as pipe-delimited in the parameter.|`number_between(234\|523)`|
+|Number Not Between|`number_not_between`|Checks if the data value is a number that is not between a lower bound and an upper bound (both exclusive) specified in the provided parameter. The lower bound and upper bound should be specified as pipe-delimited in the parameter.|`number_not_between(234\|523)`|

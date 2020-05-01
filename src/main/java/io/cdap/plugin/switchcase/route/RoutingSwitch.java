@@ -155,7 +155,6 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       ALLOWED_TYPES.add(Schema.Type.LONG);
       ALLOWED_TYPES.add(Schema.Type.FLOAT);
       ALLOWED_TYPES.add(Schema.Type.DOUBLE);
-      ALLOWED_TYPES.add(Schema.Type.BOOLEAN);
     }
     @VisibleForTesting
     static final String DEFAULT_PORT_NAME = "Default";
@@ -179,10 +178,9 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
     @Description("Specifies the rules to determine the port where the record should be routed to. Rules are applied " +
       "on the value of the routing field. The port specification is expressed as a comma-separated list of rules, " +
       "where each rule has the format [port-name]:[function-name]([parameter-name]). [port-name] is the name of the " +
-      "port to route the record to if the rule is satisfied. [function-name] can be one of equals, not_equals, " +
-      "contains, not_contains, in, not_in, matches, not_matches, starts_with, not_starts_with, ends_with, " +
-      "not_ends_with. [parameter-name] is the parameter based on which the selected function evaluates the value " +
-      "of the routing field.")
+      "port to route the record to if the rule is satisfied. Refer to the documentation for a list of available " +
+      "functions that you can use as a [function-name]. [parameter-name] is the parameter based on which the " +
+      "selected function evaluates the value of the routing field.")
     @Macro
     @Nullable
     private final String portSpecification;
@@ -224,7 +222,8 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       this.nullPort = nullPort == null ? DEFAULT_NULL_PORT_NAME : nullPort;
     }
 
-    private void validate(Schema inputSchema, FailureCollector collector) throws IllegalArgumentException {
+    @VisibleForTesting
+    void validate(Schema inputSchema, FailureCollector collector) throws IllegalArgumentException {
       // TODO: Add validation code for mode after adding jexl mode
       Optional<DefaultHandling> handling = DefaultHandling.fromValue(defaultHandling);
       if (!handling.isPresent()) {
@@ -250,18 +249,20 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       Schema.Type type = fieldSchema.isNullable() ? fieldSchema.getNonNullable().getType() : fieldSchema.getType();
       if (!ALLOWED_TYPES.contains(type)) {
         collector.addFailure(
-          String.format("Field to split must be one of - STRING, INTEGER, LONG, FLOAT, DOUBLE, BOOLEAN. " +
+          String.format("Field to split must be one of - STRING, INTEGER, LONG, FLOAT, DOUBLE. " +
                           "Found '%s'", fieldSchema), null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
       }
       if (portSpecification == null || portSpecification.isEmpty()) {
         collector.addFailure("No port specifications defined.", "Please provide at least 1 port specification")
           .withConfigProperty(BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
+      // only done for validation, so ignoring return value.
+      getPortSpecificationEvaluator(collector);
     }
 
     private PortSpecificationEvaluator getPortSpecificationEvaluator(FailureCollector collector) {
       // TODO: Add code for switching evaluators based on config
-      return new BasicPortSpecificationEvaluator(routingField, nullPort, portSpecification, collector);
+      return new BasicPortSpecificationEvaluator(routingField, portSpecification, collector);
     }
 
     DefaultHandling getDefaultHandling() {
@@ -286,7 +287,15 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       STARTS_WITH,
       NOT_STARTS_WITH,
       ENDS_WITH,
-      NOT_ENDS_WITH
+      NOT_ENDS_WITH,
+      NUMBER_EQUALS,
+      NUMBER_NOT_EQUALS,
+      NUMBER_GREATER_THAN,
+      NUMBER_GREATER_THAN_OR_EQUALS,
+      NUMBER_LESSER_THAN,
+      NUMBER_LESSER_THAN_OR_EQUALS,
+      NUMBER_BETWEEN,
+      NUMBER_NOT_BETWEEN
     }
 
     enum DefaultHandling {

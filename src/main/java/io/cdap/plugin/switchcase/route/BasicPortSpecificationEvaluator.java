@@ -35,13 +35,10 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
   private static final Logger LOG = LoggerFactory.getLogger(BasicPortSpecificationEvaluator.class);
 
   private final String routingField;
-  private final String nullPort;
   private final List<BasicPortSpecification> portSpecifications;
 
-  BasicPortSpecificationEvaluator(String routingField, String nullPort, String portSpecification,
-                                  FailureCollector collector) {
+  BasicPortSpecificationEvaluator(String routingField, String portSpecification, FailureCollector collector) {
     this.routingField = routingField;
-    this.nullPort = nullPort;
     this.portSpecifications = parse(portSpecification, collector);
   }
 
