@@ -1,0 +1,97 @@
+{
+  "metadata": {
+    "spec-version": "1.5"
+  },
+  "display-name" : "Routing Switch",
+  "configuration-groups": [
+    {
+      "label": "Basic",
+      "properties": [
+        {
+          "widget-type": "input-field-selector",
+          "label": "Routing field",
+          "name": "routingField",
+          "widget-attributes": {
+
+          }
+        },
+        {
+          "widget-type": "function-dropdown-with-alias",
+          "label": "Port Specification",
+          "name": "portSpecification",
+          "widget-attributes": {
+            "placeholders": {
+              "field": "Value",
+              "alias": "Port name"
+            },
+            "dropdownOptions": [
+              "Equals",
+              "Not Equals",
+              "Contains",
+              "Not Contains",
+              "In",
+              "Not In",
+              "Matches",
+              "Not Matches",
+              "Starts With",
+              "Not Starts With",
+              "Ends With",
+              "Not Ends With"
+            ]
+          },
+          "plugin-function": {
+            "method": "POST",
+            "widget": "outputSchema",
+            "output-property": "schema",
+            "plugin-method": "outputSchema",
+            "required-fields": ["portSpecification"],
+            "missing-required-fields-message": "'Port Specification' is required to fetch schema."
+          }
+        }
+      ]
+    },
+    {
+      "label": "Advanced",
+      "properties": [
+        {
+          "widget-type": "select",
+          "label": "Default handling",
+          "name": "defaultHandling",
+          "widget-attributes": {
+            "values": [
+              "Skip",
+              "Send to error port",
+              "Send to default port"
+            ],
+            "default": "Send to error port"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Default Port",
+          "name": "defaultPort"
+        },
+        {
+          "widget-type": "select",
+          "label": "Null handling",
+          "name": "nullHandling",
+          "widget-attributes": {
+            "values": [
+              "Skip",
+              "Send to error port",
+              "Send to null port"
+            ],
+            "default": "Send to error port"
+          }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Null Port",
+          "name": "nullPort"
+        }
+      ]
+    }
+  ],
+  "emit-errors": true,
+  "outputs": []
+}
