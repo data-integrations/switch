@@ -16,6 +16,7 @@
 
 package io.cdap.plugin.switchcase.route;
 
+import java.math.BigDecimal;
 import java.util.Arrays;
 import java.util.List;
 
@@ -156,6 +157,131 @@ final class BasicRoutingFunctions {
     public boolean evaluate(String actualValue, String compareValue) {
       return !actualValue.endsWith(compareValue);
     }
+  }
+
+  /**
+   * Routing function that checks if a number is equal to a value
+   */
+  static class NumberEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Equals");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Equals");
+      return actualNumber.equals(compareNumber);
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is not equal to a value
+   */
+  static class NumberNotEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Not Equals");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Not Equals");
+      return !actualNumber.equals(compareNumber);
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is greater than a value
+   */
+  static class GreaterThanFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than");
+      return actualNumber.compareTo(compareNumber) > 0;
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is greater than or equal to a value
+   */
+  static class GreaterThanOrEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than or Equals");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than or Equals");
+      return actualNumber.compareTo(compareNumber) >= 0;
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is lesser than a value
+   */
+  static class LesserThanFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than");
+      return actualNumber.compareTo(compareNumber) < 0;
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is lesser than or equal to a value
+   */
+  static class LesserThanOrEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than or Equals");
+      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than or Equals");
+      return actualNumber.compareTo(compareNumber) <= 0;
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is lesser than or equal to a value
+   */
+  static class NumberBetweenFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      return checkNumberBetween(actualValue, compareValue);
+    }
+  }
+
+  /**
+   * Routing function that checks if a number is lesser than or equal to a value
+   */
+  static class NumberNotBetweenFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(String actualValue, String compareValue) {
+      return !checkNumberBetween(actualValue, compareValue);
+    }
+  }
+
+  private static BigDecimal parseNumber(String value, String function) {
+    BigDecimal returnValue;
+    try {
+      returnValue = new BigDecimal(value);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+        String.format("Expected number, but found non-numeric argument '%s' for function %s", value, function)
+      );
+    }
+    return returnValue;
+  }
+
+  private static boolean checkNumberBetween(String actualValue, String compareValue) {
+    String[] bounds = compareValue.split("\\|");
+    if (bounds.length != 2) {
+      throw new IllegalArgumentException(
+        String.format("Should specify a lower bound and upper bound separated by a pipe. Found %s.", compareValue)
+      );
+    }
+    BigDecimal lower = parseNumber(bounds[0], "Number Between");
+    BigDecimal upper = parseNumber(bounds[1], "Number Between");
+    BigDecimal actual = parseNumber(actualValue, "Number Between");
+    return actual.compareTo(lower) >= 0 && actual.compareTo(upper) <= 0;
   }
 
   private BasicRoutingFunctions() {

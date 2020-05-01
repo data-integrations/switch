@@ -17,10 +17,17 @@
 package io.cdap.plugin.switchcase.route;
 
 import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.etl.api.InvalidEntry;
+import io.cdap.cdap.etl.api.MultiOutputPipelineConfigurer;
 import io.cdap.cdap.etl.api.SplitterTransform;
+import io.cdap.cdap.etl.api.StageContext;
+import io.cdap.cdap.etl.api.TransformContext;
+import io.cdap.cdap.etl.api.validation.ValidationException;
+import io.cdap.cdap.etl.api.validation.ValidationFailure;
 import io.cdap.cdap.etl.mock.common.MockMultiOutputEmitter;
 import io.cdap.cdap.etl.mock.transform.MockTransformContext;
+import io.cdap.cdap.etl.mock.validation.MockFailureCollector;
 import org.junit.Assert;
 import org.junit.Test;
 import java.util.List;
@@ -111,6 +118,36 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
     testBasicFunction("portB", "portA", "portA:not_ends_with(lierA),portB:not_ends_with(lier)");
   }
 
+  @Test
+  public void testAvailableFunctions() {
+    Assert.assertTrue(validateFunction("equals").isEmpty());
+    Assert.assertTrue(validateFunction("not_equals").isEmpty());
+    Assert.assertTrue(validateFunction("contains").isEmpty());
+    Assert.assertTrue(validateFunction("not_contains").isEmpty());
+    Assert.assertTrue(validateFunction("in").isEmpty());
+    Assert.assertTrue(validateFunction("not_in").isEmpty());
+    Assert.assertTrue(validateFunction("matches").isEmpty());
+    Assert.assertTrue(validateFunction("not_matches").isEmpty());
+    Assert.assertTrue(validateFunction("starts_with").isEmpty());
+    Assert.assertTrue(validateFunction("not_starts_with").isEmpty());
+    Assert.assertTrue(validateFunction("ends_with").isEmpty());
+    Assert.assertTrue(validateFunction("not_ends_with").isEmpty());
+    Assert.assertTrue(validateFunction("number_equals").isEmpty());
+    Assert.assertTrue(validateFunction("number_not_equals").isEmpty());
+    Assert.assertTrue(validateFunction("number_greater_than").isEmpty());
+    Assert.assertTrue(validateFunction("number_greater_than_or_equals").isEmpty());
+    Assert.assertTrue(validateFunction("number_lesser_than").isEmpty());
+    Assert.assertTrue(validateFunction("number_lesser_than_or_equals").isEmpty());
+    Assert.assertTrue(validateFunction("number_between").isEmpty());
+    Assert.assertTrue(validateFunction("number_not_between").isEmpty());
+    try {
+      validateFunction("blah");
+      Assert.fail("Validation should fail for invalid function");
+    } catch (ValidationException e) {
+      // expected
+    }
+  }
+
   private void testNullRecordToNullPort(@Nullable String nullPortName) throws Exception {
     testNullRecord(RoutingSwitch.Config.NullHandling.NULL_PORT.value(), nullPortName);
   }
@@ -171,5 +208,13 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
     Assert.assertEquals(testRecord, record);
     objects = emitter.getEmitted().get(portToNotRouteTo);
     Assert.assertNull(objects);
+  }
+
+  private List<ValidationFailure> validateFunction(String functionName) {
+    String portSpecification = String.format("Supplier 1:%s(supplier1)", functionName);
+    RoutingSwitch.Config config = new RoutingSwitch.Config("supplier_id", portSpecification, null, null, null, null);
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(INPUT, collector);
+    return collector.getValidationFailures();
   }
 }

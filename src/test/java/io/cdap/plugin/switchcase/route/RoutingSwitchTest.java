@@ -20,11 +20,14 @@ import io.cdap.cdap.api.data.format.StructuredRecord;
 import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.etl.api.InvalidEntry;
 import io.cdap.cdap.etl.api.SplitterTransform;
+import io.cdap.cdap.etl.api.validation.ValidationFailure;
 import io.cdap.cdap.etl.mock.common.MockMultiOutputEmitter;
 import io.cdap.cdap.etl.mock.transform.MockTransformContext;
+import io.cdap.cdap.etl.mock.validation.MockFailureCollector;
 import org.junit.Assert;
 import org.junit.Test;
 import java.util.List;
+import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
@@ -37,6 +40,38 @@ public abstract class RoutingSwitchTest {
                     Schema.Field.of("part_id", Schema.of(Schema.Type.STRING)),
                     Schema.Field.of("count", Schema.of(Schema.Type.INT)));
   static final String PORT_SPECIFICATION = "a_port:equals(10)";
+  static final Schema ALL_TYPES_SCHEMA = Schema.recordOf("input",
+                                                         Schema.Field.of("supplier_id", Schema.of(Schema.Type.STRING)),
+                                                         Schema.Field.of("string", Schema.of(Schema.Type.STRING)),
+                                                         Schema.Field.of("int", Schema.of(Schema.Type.INT)),
+                                                         Schema.Field.of("float", Schema.of(Schema.Type.FLOAT)),
+                                                         Schema.Field.of("long", Schema.of(Schema.Type.LONG)),
+                                                         Schema.Field.of("double", Schema.of(Schema.Type.DOUBLE)),
+                                                         Schema.Field.of("boolean", Schema.of(Schema.Type.BOOLEAN)),
+                                                         Schema.Field.of("bytes", Schema.of(Schema.Type.BYTES)),
+                                                         Schema.Field.of(
+                                                           "union",
+                                                           Schema.unionOf(
+                                                             Schema.of(Schema.Type.INT), Schema.of(Schema.Type.BOOLEAN)
+                                                           )
+                                                         ),
+                                                         Schema.Field.of("enum", Schema.enumWith("ENUM1", "ENUM2")),
+                                                         Schema.Field.of(
+                                                           "map",
+                                                           Schema.mapOf(
+                                                             Schema.of(Schema.Type.STRING),
+                                                             Schema.of(Schema.Type.STRING)
+                                                           )
+                                                         ),
+                                                         Schema.Field.of(
+                                                           "array", Schema.arrayOf(Schema.of(Schema.Type.INT))
+                                                         ),
+                                                         Schema.Field.of(
+                                                           "record",
+                                                           Schema.recordOf(
+                                                             "record", Objects.requireNonNull(INPUT.getFields())
+                                                           )
+                                                         ));
 
   // TODO: Add an abstract method getMode(), so test can be executed for all modes after adding jexl support
 
@@ -109,6 +144,22 @@ public abstract class RoutingSwitchTest {
     Assert.assertEquals(testRecord3, emitter.getEmitted().get("Supplier 3").get(0));
   }
 
+  @Test
+  public void testAllowedTypes() {
+    Assert.assertTrue(validateType("string").isEmpty());
+    Assert.assertTrue(validateType("int").isEmpty());
+    Assert.assertTrue(validateType("long").isEmpty());
+    Assert.assertTrue(validateType("float").isEmpty());
+    Assert.assertTrue(validateType("double").isEmpty());
+    Assert.assertEquals(1, validateType("boolean").size());
+    Assert.assertEquals(1, validateType("bytes").size());
+    Assert.assertEquals(1, validateType("union").size());
+    Assert.assertEquals(1, validateType("enum").size());
+    Assert.assertEquals(1, validateType("map").size());
+    Assert.assertEquals(1, validateType("array").size());
+    Assert.assertEquals(1, validateType("record").size());
+  }
+
   private void testDefaultedRecordToDefaultPort(@Nullable String defaultPortName) throws Exception {
     testDefaultedRecord(RoutingSwitch.Config.DefaultHandling.DEFAULT_PORT.value(), defaultPortName);
   }
@@ -147,4 +198,11 @@ public abstract class RoutingSwitchTest {
     Assert.assertEquals(testRecord, record);
   }
 
+  private List<ValidationFailure> validateType(String fieldName) {
+    String portSpecification = "Supplier 1:equals(supplier1)";
+    RoutingSwitch.Config config = new RoutingSwitch.Config(fieldName, portSpecification, null, null, null, null);
+    MockFailureCollector collector = new MockFailureCollector();
+    config.validate(ALL_TYPES_SCHEMA, collector);
+    return collector.getValidationFailures();
+  }
 }

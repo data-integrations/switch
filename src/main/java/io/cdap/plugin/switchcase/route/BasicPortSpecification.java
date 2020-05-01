@@ -18,8 +18,52 @@ package io.cdap.plugin.switchcase.route;
 
 import com.google.common.base.Joiner;
 import io.cdap.cdap.etl.api.FailureCollector;
+import java.util.HashMap;
+import java.util.Map;
 
 final class BasicPortSpecification extends PortSpecification {
+  private static final Map<RoutingSwitch.Config.FunctionType, BasicRoutingFunction> FUNCTIONS = new HashMap<>();
+  static {
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.EQUALS, new BasicRoutingFunctions.EqualsFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_EQUALS, new BasicRoutingFunctions.NotEqualsFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.CONTAINS, new BasicRoutingFunctions.ContainsFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_CONTAINS, new BasicRoutingFunctions.NotContainsFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.IN, new BasicRoutingFunctions.InFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_IN, new BasicRoutingFunctions.NotInFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.MATCHES, new BasicRoutingFunctions.MatchesFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_MATCHES, new BasicRoutingFunctions.NotMatchesFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.STARTS_WITH, new BasicRoutingFunctions.StartsWithFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_STARTS_WITH, new BasicRoutingFunctions.NotStartsWithFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.ENDS_WITH, new BasicRoutingFunctions.EndsWithFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NOT_ENDS_WITH, new BasicRoutingFunctions.NotEndsWithFunction());
+    FUNCTIONS.put(RoutingSwitch.Config.FunctionType.NUMBER_EQUALS, new BasicRoutingFunctions.NumberEqualsFunction());
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_NOT_EQUALS, new BasicRoutingFunctions.NumberNotEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_GREATER_THAN, new BasicRoutingFunctions.GreaterThanFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_GREATER_THAN_OR_EQUALS,
+      new BasicRoutingFunctions.GreaterThanOrEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_LESSER_THAN,
+      new BasicRoutingFunctions.LesserThanFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_LESSER_THAN_OR_EQUALS,
+      new BasicRoutingFunctions.LesserThanOrEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_BETWEEN,
+      new BasicRoutingFunctions.NumberBetweenFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.NUMBER_NOT_BETWEEN,
+      new BasicRoutingFunctions.NumberNotBetweenFunction()
+    );
+  }
   private final BasicRoutingFunction routingFunction;
   private final String parameter;
   private final FailureCollector collector;
@@ -41,52 +85,14 @@ final class BasicPortSpecification extends PortSpecification {
   }
 
   private BasicRoutingFunction fromFunctionType(RoutingSwitch.Config.FunctionType functionType) {
-    BasicRoutingFunction routingFunction;
-    switch (functionType) {
-      case EQUALS:
-        routingFunction = new BasicRoutingFunctions.EqualsFunction();
-        break;
-      case NOT_EQUALS:
-        routingFunction = new BasicRoutingFunctions.NotEqualsFunction();
-        break;
-      case CONTAINS:
-        routingFunction = new BasicRoutingFunctions.ContainsFunction();
-        break;
-      case NOT_CONTAINS:
-        routingFunction = new BasicRoutingFunctions.NotContainsFunction();
-        break;
-      case IN:
-        routingFunction = new BasicRoutingFunctions.InFunction();
-        break;
-      case NOT_IN:
-        routingFunction = new BasicRoutingFunctions.NotInFunction();
-        break;
-      case MATCHES:
-        routingFunction = new BasicRoutingFunctions.MatchesFunction();
-        break;
-      case NOT_MATCHES:
-        routingFunction = new BasicRoutingFunctions.NotMatchesFunction();
-        break;
-      case STARTS_WITH:
-        routingFunction = new BasicRoutingFunctions.StartsWithFunction();
-        break;
-      case NOT_STARTS_WITH:
-        routingFunction = new BasicRoutingFunctions.NotStartsWithFunction();
-        break;
-      case ENDS_WITH:
-        routingFunction = new BasicRoutingFunctions.EndsWithFunction();
-        break;
-      case NOT_ENDS_WITH:
-        routingFunction = new BasicRoutingFunctions.NotEndsWithFunction();
-        break;
-      default:
+    if (!FUNCTIONS.containsKey(functionType)) {
         collector.addFailure(
           "Unknown routing function " + functionType,
           "Routing function must be one of " + Joiner.on(",").join(RoutingSwitch.Config.FunctionType.values())
         ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
         throw collector.getOrThrowException();
     }
-    return routingFunction;
+    return FUNCTIONS.get(functionType);
   }
 
   @Override
