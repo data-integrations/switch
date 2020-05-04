@@ -155,6 +155,8 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       ALLOWED_TYPES.add(Schema.Type.LONG);
       ALLOWED_TYPES.add(Schema.Type.FLOAT);
       ALLOWED_TYPES.add(Schema.Type.DOUBLE);
+      // only supported for LogicalType.DECIMAL
+      ALLOWED_TYPES.add(Schema.Type.BYTES);
     }
     @VisibleForTesting
     static final String DEFAULT_PORT_NAME = "Default";
@@ -235,8 +237,8 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       // TODO: Add validation for jexl mode after adding jexl support
 
       if (routingField == null || routingField.isEmpty()) {
-        collector.addFailure("Field to split is required when routing mode is basic.",
-                             "Please provide the field to split on").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+        collector.addFailure("Routing field is required when routing mode is basic.",
+                             "Please provide the routing field").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
       }
       Schema.Field field = inputSchema.getField(routingField);
       if (field == null) {
@@ -295,7 +297,15 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       NUMBER_LESSER_THAN,
       NUMBER_LESSER_THAN_OR_EQUALS,
       NUMBER_BETWEEN,
-      NUMBER_NOT_BETWEEN
+      NUMBER_NOT_BETWEEN,
+      DATE_EQUALS,
+      DATE_NOT_EQUALS,
+      DATE_AFTER,
+      DATE_AFTER_OR_ON,
+      DATE_BEFORE,
+      DATE_BEFORE_OR_ON,
+      DATE_BETWEEN,
+      DATE_NOT_BETWEEN
     }
 
     enum DefaultHandling {

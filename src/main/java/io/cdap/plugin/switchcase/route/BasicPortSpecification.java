@@ -63,6 +63,38 @@ final class BasicPortSpecification extends PortSpecification {
       RoutingSwitch.Config.FunctionType.NUMBER_NOT_BETWEEN,
       new BasicRoutingFunctions.NumberNotBetweenFunction()
     );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_EQUALS,
+      new BasicRoutingFunctions.DateEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_NOT_EQUALS,
+      new BasicRoutingFunctions.DateNotEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_AFTER,
+      new BasicRoutingFunctions.DateAfterFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_AFTER_OR_ON,
+      new BasicRoutingFunctions.DateAfterOrOnFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BEFORE,
+      new BasicRoutingFunctions.DateBeforeFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BEFORE_OR_ON,
+      new BasicRoutingFunctions.DateBeforeOrOnFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BETWEEN,
+      new BasicRoutingFunctions.DateBetweenFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_NOT_BETWEEN,
+      new BasicRoutingFunctions.DateNotBetweenFunction()
+    );
   }
   private final BasicRoutingFunction routingFunction;
   private final String parameter;

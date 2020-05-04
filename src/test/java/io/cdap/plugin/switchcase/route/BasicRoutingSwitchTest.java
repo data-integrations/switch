@@ -17,12 +17,8 @@
 package io.cdap.plugin.switchcase.route;
 
 import io.cdap.cdap.api.data.format.StructuredRecord;
-import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.etl.api.InvalidEntry;
-import io.cdap.cdap.etl.api.MultiOutputPipelineConfigurer;
 import io.cdap.cdap.etl.api.SplitterTransform;
-import io.cdap.cdap.etl.api.StageContext;
-import io.cdap.cdap.etl.api.TransformContext;
 import io.cdap.cdap.etl.api.validation.ValidationException;
 import io.cdap.cdap.etl.api.validation.ValidationFailure;
 import io.cdap.cdap.etl.mock.common.MockMultiOutputEmitter;
@@ -140,6 +136,14 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
     Assert.assertTrue(validateFunction("number_lesser_than_or_equals").isEmpty());
     Assert.assertTrue(validateFunction("number_between").isEmpty());
     Assert.assertTrue(validateFunction("number_not_between").isEmpty());
+    Assert.assertTrue(validateFunction("date_equals").isEmpty());
+    Assert.assertTrue(validateFunction("date_not_equals").isEmpty());
+    Assert.assertTrue(validateFunction("date_after").isEmpty());
+    Assert.assertTrue(validateFunction("date_after_or_on").isEmpty());
+    Assert.assertTrue(validateFunction("date_before").isEmpty());
+    Assert.assertTrue(validateFunction("date_before_or_on").isEmpty());
+    Assert.assertTrue(validateFunction("date_between").isEmpty());
+    Assert.assertTrue(validateFunction("date_not_between").isEmpty());
     try {
       validateFunction("blah");
       Assert.fail("Validation should fail for invalid function");

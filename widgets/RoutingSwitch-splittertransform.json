@@ -96,6 +96,46 @@
               {
                 "label": "Number Lesser Than or Equals",
                 "value": "number_lesser_than_or_equals"
+              },
+              {
+                "label": "Number Between",
+                "value": "number_between"
+              },
+              {
+                "label": "Number Not Between",
+                "value": "number_not_between"
+              },
+              {
+                "label": "Date Equals",
+                "value": "date_equals"
+              },
+              {
+                "label": "Date Not Equals",
+                "value": "date_not_equals"
+              },
+              {
+                "label": "Date After",
+                "value": "date_after"
+              },
+              {
+                "label": "Date After or On",
+                "value": "date_after_or_on"
+              },
+              {
+                "label": "Date Before",
+                "value": "date_before"
+              },
+              {
+                "label": "Date Before or On",
+                "value": "date_before_or_on"
+              },
+              {
+                "label": "Date Between",
+                "value": "date_between"
+              },
+              {
+                "label": "Date Not Between",
+                "value": "date_not_between"
               }
             ]
           },

@@ -16,9 +16,19 @@
 
 package io.cdap.plugin.switchcase.route;
 
+import io.cdap.cdap.api.data.schema.Schema;
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Class that contains various implementations of {@link BasicRoutingFunction}
@@ -31,7 +41,8 @@ final class BasicRoutingFunctions {
   static class EqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Equals");
       return compareValue.equals(actualValue);
     }
   }
@@ -42,7 +53,8 @@ final class BasicRoutingFunctions {
   static class NotEqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not Equals");
       return !compareValue.equals(actualValue);
     }
   }
@@ -53,8 +65,9 @@ final class BasicRoutingFunctions {
   static class ContainsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return actualValue.contains(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Contains");
+      return ((String) actualValue).contains(compareValue);
     }
   }
 
@@ -64,8 +77,9 @@ final class BasicRoutingFunctions {
   static class NotContainsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return !actualValue.contains(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not Contains");
+      return !((String) actualValue).contains(compareValue);
     }
   }
 
@@ -75,8 +89,10 @@ final class BasicRoutingFunctions {
   static class InFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "In");
       List<String> possibleValues = Arrays.asList(compareValue.split("\\|"));
+      //noinspection SuspiciousMethodCalls
       return possibleValues.contains(actualValue);
     }
   }
@@ -87,8 +103,10 @@ final class BasicRoutingFunctions {
   static class NotInFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not In");
       List<String> possibleValues = Arrays.asList(compareValue.split("\\|"));
+      //noinspection SuspiciousMethodCalls
       return !possibleValues.contains(actualValue);
     }
   }
@@ -99,8 +117,9 @@ final class BasicRoutingFunctions {
   static class MatchesFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return actualValue.matches(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Matches");
+      return ((String) actualValue).matches(compareValue);
     }
   }
 
@@ -110,8 +129,9 @@ final class BasicRoutingFunctions {
   static class NotMatchesFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return !actualValue.matches(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not Matches");
+      return !((String) actualValue).matches(compareValue);
     }
   }
 
@@ -121,8 +141,9 @@ final class BasicRoutingFunctions {
   static class StartsWithFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return actualValue.startsWith(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Starts With");
+      return ((String) actualValue).startsWith(compareValue);
     }
   }
 
@@ -132,8 +153,9 @@ final class BasicRoutingFunctions {
   static class NotStartsWithFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return !actualValue.startsWith(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not Starts With");
+      return !((String) actualValue).startsWith(compareValue);
     }
   }
 
@@ -143,8 +165,9 @@ final class BasicRoutingFunctions {
   static class EndsWithFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return actualValue.endsWith(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Ends With");
+      return ((String) actualValue).endsWith(compareValue);
     }
   }
 
@@ -154,8 +177,9 @@ final class BasicRoutingFunctions {
   static class NotEndsWithFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return !actualValue.endsWith(compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      ensureString(actualValue, getNonNullableType(schema), "Not Ends With");
+      return !((String) actualValue).endsWith(compareValue);
     }
   }
 
@@ -165,10 +189,8 @@ final class BasicRoutingFunctions {
   static class NumberEqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Equals");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Equals");
-      return actualNumber.equals(compareNumber);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Equals") == 0;
     }
   }
 
@@ -178,10 +200,8 @@ final class BasicRoutingFunctions {
   static class NumberNotEqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Not Equals");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Not Equals");
-      return !actualNumber.equals(compareNumber);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Not Equals") != 0;
     }
   }
 
@@ -191,10 +211,8 @@ final class BasicRoutingFunctions {
   static class GreaterThanFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than");
-      return actualNumber.compareTo(compareNumber) > 0;
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Greater Than") > 0;
     }
   }
 
@@ -204,10 +222,8 @@ final class BasicRoutingFunctions {
   static class GreaterThanOrEqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than or Equals");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than or Equals");
-      return actualNumber.compareTo(compareNumber) >= 0;
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Greater Than or Equals") >= 0;
     }
   }
 
@@ -217,10 +233,8 @@ final class BasicRoutingFunctions {
   static class LesserThanFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than");
-      return actualNumber.compareTo(compareNumber) < 0;
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Less Than") < 0;
     }
   }
 
@@ -230,10 +244,8 @@ final class BasicRoutingFunctions {
   static class LesserThanOrEqualsFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      BigDecimal actualNumber = parseNumber(actualValue, "Number Greater Than or Equals");
-      BigDecimal compareNumber = parseNumber(compareValue, "Number Greater Than or Equals");
-      return actualNumber.compareTo(compareNumber) <= 0;
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return compare(actualValue, compareValue, schema, "Less Than or Equals") <= 0;
     }
   }
 
@@ -243,8 +255,8 @@ final class BasicRoutingFunctions {
   static class NumberBetweenFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return checkNumberBetween(actualValue, compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return checkNumberBetween(actualValue, compareValue, schema, "Number Between");
     }
   }
 
@@ -254,34 +266,291 @@ final class BasicRoutingFunctions {
   static class NumberNotBetweenFunction implements BasicRoutingFunction {
 
     @Override
-    public boolean evaluate(String actualValue, String compareValue) {
-      return !checkNumberBetween(actualValue, compareValue);
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      return !checkNumberBetween(actualValue, compareValue, schema, "Number Not Between");
     }
   }
 
-  private static BigDecimal parseNumber(String value, String function) {
-    BigDecimal returnValue;
+  /**
+   * Routing function that checks for date equality
+   */
+  static class DateEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date Equals") == 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for date inequality
+   */
+  static class DateNotEqualsFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date Not Equals") != 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value being before a specified date (exclusive)
+   */
+  static class DateBeforeFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date Before") < 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value being before a specified date (inclusive)
+   */
+  static class DateBeforeOrOnFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date Before or On") <= 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value being after a specified date (exclusive)
+   */
+  static class DateAfterFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date After") > 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value being after a specified date (inclusive)
+   */
+  static class DateAfterOrOnFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return compareDate(actualValue, compareValue, logicalType, "Date After or On") >= 0;
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value being between two specified dates (inclusive)
+   */
+  static class DateBetweenFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return checkDateBetween(actualValue, compareValue, logicalType, "Date Between");
+    }
+  }
+
+  /**
+   * Routing function that checks for a date value not being between two specified dates (inclusive)
+   */
+  static class DateNotBetweenFunction implements BasicRoutingFunction {
+
+    @Override
+    public boolean evaluate(Object actualValue, String compareValue, Schema schema) {
+      Schema.LogicalType logicalType = Objects.requireNonNull(schema.getLogicalType());
+      return !checkDateBetween(actualValue, compareValue, logicalType, "Date Not Between");
+    }
+  }
+
+  private static Schema.Type getNonNullableType(Schema schema) {
+    return schema.isNullable() ? schema.getNonNullable().getType() : schema.getType();
+  }
+
+  private static void ensureString(Object actualValue, Schema.Type type, String function) {
+    if (!(actualValue instanceof String) && !(type == Schema.Type.STRING)) {
+      throw new IllegalArgumentException(
+        String.format("Function %s can only be called on Strings. Found data type %s and schema type %s",
+                      function, actualValue.getClass().getName(), type)
+      );
+    }
+  }
+
+  private static int compare(Object actualValue, String compareValue, Schema schema, String function) {
+    Schema.Type type = getNonNullableType(schema);
+    switch (type) {
+      case INT:
+        return ((Integer) actualValue).compareTo(parseInt(compareValue, function));
+      case DOUBLE:
+        return ((Double) actualValue).compareTo(parseDouble(compareValue, function));
+      case FLOAT:
+        return ((Float) actualValue).compareTo(parseFloat(compareValue, function));
+      case LONG:
+        return ((Long) actualValue).compareTo(parseLong(compareValue, function));
+      case BYTES:
+        // ensure decimal type
+        if (schema.getLogicalType() == null) {
+          throw new IllegalArgumentException(
+            String.format("Routing function %s is not supported on bytes fields.", function)
+          );
+        }
+        if (Schema.LogicalType.DECIMAL != schema.getLogicalType()) {
+          throw new IllegalArgumentException(
+            String.format("Routing function %s must be called on a field with logical type as decimal.", function)
+          );
+        }
+        byte[] decimalBytes = (byte[]) actualValue;
+        BigDecimal actualDecimal = getDecimal(decimalBytes, schema);
+        BigDecimal compareDecimal = parseDecimal(compareValue, function);
+        return actualDecimal.compareTo(compareDecimal);
+      default:
+        throw new IllegalArgumentException(
+          String.format("Numeric function %s called on non-numeric type %s", function, type)
+        );
+    }
+  }
+
+  private static boolean checkNumberBetween(Object actualValue, String compareValue, Schema schema, String function) {
+    String[] bounds = parseRange(compareValue);
+    return compare(actualValue, bounds[0], schema, function) >= 0 &&
+      compare(actualValue, bounds[1], schema, function) <= 0;
+  }
+
+  private static Integer parseInt(String value, String function) {
+    int returnValue;
     try {
-      returnValue = new BigDecimal(value);
+      returnValue = Integer.parseInt(value);
     } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-        String.format("Expected number, but found non-numeric argument '%s' for function %s", value, function)
+        String.format("Expected integer, but found argument '%s' for function %s", value, function)
       );
     }
     return returnValue;
   }
 
-  private static boolean checkNumberBetween(String actualValue, String compareValue) {
-    String[] bounds = compareValue.split("\\|");
-    if (bounds.length != 2) {
+  private static Long parseLong(String value, String function) {
+    long returnValue;
+    try {
+      returnValue = Long.parseLong(value);
+    } catch (NumberFormatException e) {
       throw new IllegalArgumentException(
-        String.format("Should specify a lower bound and upper bound separated by a pipe. Found %s.", compareValue)
+        String.format("Expected long, but found argument '%s' for function %s", value, function)
       );
     }
-    BigDecimal lower = parseNumber(bounds[0], "Number Between");
-    BigDecimal upper = parseNumber(bounds[1], "Number Between");
-    BigDecimal actual = parseNumber(actualValue, "Number Between");
-    return actual.compareTo(lower) >= 0 && actual.compareTo(upper) <= 0;
+    return returnValue;
+  }
+
+  private static Float parseFloat(String value, String function) {
+    float returnValue;
+    try {
+      returnValue = Float.parseFloat(value);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+        String.format("Expected float, but found argument '%s' for function %s", value, function)
+      );
+    }
+    return returnValue;
+  }
+
+  private static Double parseDouble(String value, String function) {
+    double returnValue;
+    try {
+      returnValue = Double.parseDouble(value);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+        String.format("Expected double, but found argument '%s' for function %s", value, function)
+      );
+    }
+    return returnValue;
+  }
+
+  private static BigDecimal parseDecimal(String value, String function) {
+    BigDecimal returnValue;
+    try {
+      returnValue = new BigDecimal(value);
+    } catch (NumberFormatException e) {
+      throw new IllegalArgumentException(
+        String.format("Expected BigDecimal, but found argument '%s' for function %s", value, function)
+      );
+    }
+    return returnValue;
+  }
+
+  private static BigDecimal getDecimal(byte[] value, Schema schema) {
+    int scale = schema.getScale();
+    BigDecimal decimal = new BigDecimal(new BigInteger(value), scale);
+    if (decimal.precision() > 38 || decimal.scale() > 9) {
+      throw new IllegalArgumentException(
+        String.format("Invalid precision '%s' and scale '%s'. " +
+                        "Precision must be at most 38 and scale must be at most 9.",
+                      decimal.precision(), decimal.scale()));
+    }
+    return decimal;
+  }
+
+  private static int compareDate(Object actualValue, String compareValue, Schema.LogicalType logicalType,
+                                 String function) {
+    switch(logicalType) {
+      case DATE:
+        LocalDate actualDate = LocalDate.ofEpochDay(((Integer) actualValue).longValue());
+        LocalDate compareDate = LocalDate.parse(compareValue, DateTimeFormatter.ISO_LOCAL_DATE);
+        return actualDate.compareTo(compareDate);
+      case TIME_MILLIS:
+        LocalTime actualTime = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(((long) actualValue)));
+        LocalTime compareTime = LocalTime.parse(compareValue, DateTimeFormatter.ISO_LOCAL_TIME);
+        return actualTime.compareTo(compareTime);
+      case TIME_MICROS:
+        actualTime = LocalTime.ofNanoOfDay(TimeUnit.MICROSECONDS.toNanos(((long) actualValue)));
+        compareTime = LocalTime.parse(compareValue, DateTimeFormatter.ISO_LOCAL_TIME);
+        return actualTime.compareTo(compareTime);
+      // NOTE: For timestamps, can't use ISO_LOCAL_DATE_TIME, because in Java 8, ZonedDateTime.parse() fails if the
+      // input does not contain a zone (https://bugs.openjdk.java.net/browse/JDK-8033662). So you have to explicitly
+      // specify a zone, and use the ISO_ZONED_DATE_TIME formatter. E.g. the input
+      // "2020-05-02T00:03:19-07:00[America/Los_Angeles]" will work, but the input
+      // "2020-05-02T00:03:19" (without timezone) will not work.
+      case TIMESTAMP_MILLIS:
+        ZonedDateTime actualTimestamp = getZonedDateTime((long) actualValue, TimeUnit.MILLISECONDS);
+        ZonedDateTime compareTimestamp = ZonedDateTime.parse(compareValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
+        return actualTimestamp.compareTo(compareTimestamp);
+      case TIMESTAMP_MICROS:
+        actualTimestamp = getZonedDateTime((long) actualValue, TimeUnit.MICROSECONDS);
+        compareTimestamp = ZonedDateTime.parse(compareValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
+        return actualTimestamp.compareTo(compareTimestamp);
+      default:
+        throw new IllegalArgumentException(
+          String.format("Date function %s called on non-date type %s", function, logicalType)
+        );
+    }
+  }
+
+  private static ZonedDateTime getZonedDateTime(long ts, TimeUnit unit) {
+    long mod = unit.convert(1, TimeUnit.SECONDS);
+    int fraction = (int) (ts % mod);
+    long tsInSeconds = unit.toSeconds(ts);
+    // create an Instant with time in seconds and fraction which will be stored as nano seconds.
+    Instant instant = Instant.ofEpochSecond(tsInSeconds, unit.toNanos(fraction));
+    return ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
+  }
+
+  private static boolean checkDateBetween(Object actualValue, String compareValue, Schema.LogicalType logicalType,
+                                          String function) {
+    String[] bounds = parseRange(compareValue);
+    return compareDate(actualValue, bounds[0], logicalType, function) >= 0 &&
+      compareDate(actualValue, bounds[1], logicalType, function) <= 0;
+  }
+
+  private static String[] parseRange(String input) {
+    String[] bounds = input.split("\\|");
+    if (bounds.length != 2) {
+      throw new IllegalArgumentException(
+        String.format("Should specify a lower bound and upper bound separated by a pipe. Found %s.", input)
+      );
+    }
+    return bounds;
   }
 
   private BasicRoutingFunctions() {

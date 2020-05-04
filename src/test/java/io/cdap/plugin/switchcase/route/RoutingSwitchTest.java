@@ -151,8 +151,8 @@ public abstract class RoutingSwitchTest {
     Assert.assertTrue(validateType("long").isEmpty());
     Assert.assertTrue(validateType("float").isEmpty());
     Assert.assertTrue(validateType("double").isEmpty());
+    Assert.assertTrue(validateType("bytes").isEmpty());
     Assert.assertEquals(1, validateType("boolean").size());
-    Assert.assertEquals(1, validateType("bytes").size());
     Assert.assertEquals(1, validateType("union").size());
     Assert.assertEquals(1, validateType("enum").size());
     Assert.assertEquals(1, validateType("map").size());
