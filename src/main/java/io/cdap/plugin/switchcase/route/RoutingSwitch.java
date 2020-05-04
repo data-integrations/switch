@@ -35,6 +35,7 @@ import io.cdap.cdap.etl.api.TransformContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -155,6 +156,8 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       ALLOWED_TYPES.add(Schema.Type.LONG);
       ALLOWED_TYPES.add(Schema.Type.FLOAT);
       ALLOWED_TYPES.add(Schema.Type.DOUBLE);
+      // only supported for LogicalType.DECIMAL
+      ALLOWED_TYPES.add(Schema.Type.BYTES);
     }
     @VisibleForTesting
     static final String DEFAULT_PORT_NAME = "Default";
@@ -235,8 +238,8 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       // TODO: Add validation for jexl mode after adding jexl support
 
       if (routingField == null || routingField.isEmpty()) {
-        collector.addFailure("Field to split is required when routing mode is basic.",
-                             "Please provide the field to split on").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+        collector.addFailure("Routing field is required when routing mode is basic.",
+                             "Please provide the routing field").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
       }
       Schema.Field field = inputSchema.getField(routingField);
       if (field == null) {
@@ -249,8 +252,9 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       Schema.Type type = fieldSchema.isNullable() ? fieldSchema.getNonNullable().getType() : fieldSchema.getType();
       if (!ALLOWED_TYPES.contains(type)) {
         collector.addFailure(
-          String.format("Field to split must be one of - STRING, INTEGER, LONG, FLOAT, DOUBLE. " +
-                          "Found '%s'", fieldSchema), null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+          String.format("Routing field '%s' must be of one of the following types - %s. Found '%s'",
+                        routingField, getSupportedTypes(), fieldSchema.getDisplayName()),
+          null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
       }
       if (portSpecification == null || portSpecification.isEmpty()) {
         collector.addFailure("No port specifications defined.", "Please provide at least 1 port specification")
@@ -258,6 +262,17 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       }
       // only done for validation, so ignoring return value.
       getPortSpecificationEvaluator(collector);
+    }
+
+    private List<String> getSupportedTypes() {
+      List<String> supportedTypes = new ArrayList<>(ALLOWED_TYPES.size() + Schema.LogicalType.values().length);
+      for (Schema.Type allowedType : ALLOWED_TYPES) {
+        supportedTypes.add(allowedType.name());
+      }
+      for (Schema.LogicalType value : Schema.LogicalType.values()) {
+        supportedTypes.add(value.name());
+      }
+      return supportedTypes;
     }
 
     private PortSpecificationEvaluator getPortSpecificationEvaluator(FailureCollector collector) {
@@ -295,7 +310,15 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       NUMBER_LESSER_THAN,
       NUMBER_LESSER_THAN_OR_EQUALS,
       NUMBER_BETWEEN,
-      NUMBER_NOT_BETWEEN
+      NUMBER_NOT_BETWEEN,
+      DATE_EQUALS,
+      DATE_NOT_EQUALS,
+      DATE_AFTER,
+      DATE_AFTER_OR_ON,
+      DATE_BEFORE,
+      DATE_BEFORE_OR_ON,
+      DATE_BETWEEN,
+      DATE_NOT_BETWEEN
     }
 
     enum DefaultHandling {

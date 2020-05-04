@@ -16,6 +16,8 @@
 
 package io.cdap.plugin.switchcase.route;
 
+import io.cdap.cdap.api.data.schema.Schema;
+
 /**
  * Defines the contract for a routing function, which decides  which port to route a record to
  */
@@ -25,7 +27,10 @@ public interface BasicRoutingFunction {
    *
    * @param actualValue the value to evaluate
    * @param compareValue the value to evaluate against
+   * @param schema the {@link Schema} of the routing field as defined in the record schema. The
+   *                {@link Schema.Type Type} or {@link Schema.LogicalType Logical Type} of the routing field as defined
+   *                in the record schema is used for parsing the data.
    * @return true if the condition is satisfied, false otherwise
    */
-  boolean evaluate(String actualValue, String compareValue);
+  boolean evaluate(Object actualValue, String compareValue, Schema schema);
 }
