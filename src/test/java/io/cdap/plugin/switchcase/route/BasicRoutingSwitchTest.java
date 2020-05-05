@@ -26,6 +26,13 @@ import io.cdap.cdap.etl.mock.transform.MockTransformContext;
 import io.cdap.cdap.etl.mock.validation.MockFailureCollector;
 import org.junit.Assert;
 import org.junit.Test;
+import java.math.BigDecimal;
+import java.nio.charset.Charset;
+import java.time.LocalDate;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.Collections;
 import java.util.List;
 import javax.annotation.Nullable;
 
@@ -152,6 +159,98 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
     }
   }
 
+  @Test
+  public void testRoutingFieldSchemas() throws Exception {
+    // Make sure that all supported types can be accepted while the pipeline runs
+    StructuredRecord inner = StructuredRecord.builder(INPUT)
+      .set("supplier_id", "1")
+      .set("part_id", "2")
+      .set("count", 3)
+      .build();
+
+    LocalDate testDate = LocalDate.of(2020, 5, 4);
+    LocalTime testTimeMillis = LocalTime.of(1, 2, 3);
+    LocalTime testTimeMicros = LocalTime.of(4, 5, 6);
+    StructuredRecord testRecord = StructuredRecord.builder(ALL_TYPES_SCHEMA)
+      .set("supplier_id", "supplier1")
+      .set("string", "test")
+      .set("int", 1)
+      .set("long", 2L)
+      .set("float", 3.14f)
+      .set("double", 3.14)
+      .set("boolean", true)
+      .set("bytes", "bytes".getBytes(Charset.defaultCharset()))
+      .set("union", 3)
+      .set("enum", "ENUM1")
+      .set("map", Collections.EMPTY_MAP)
+      .set("array", new int[] {4, 5})
+      .set("record", inner)
+      .setDate("date", testDate)
+      .setTime("time_millis", testTimeMillis)
+      .setTime("time_micros", testTimeMicros)
+      .setTimestamp("timestamp_millis", ZonedDateTime.of(testDate, testTimeMillis, ZoneId.systemDefault()))
+      .setTimestamp("timestamp_micros", ZonedDateTime.of(testDate, testTimeMicros, ZoneId.systemDefault()))
+      .setDecimal("decimal", new BigDecimal("9999999.998"))
+      .build();
+
+    MockMultiOutputEmitter<StructuredRecord> emitter = new MockMultiOutputEmitter<>();
+    runSingleRecord(testRecord, "string", "portA:ends_with(lierA)", emitter);
+    runSingleRecord(testRecord, "int", "portA:number_lesser_than(2)", emitter);
+    runSingleRecord(testRecord, "long", "portA:number_greater_than(1)", emitter);
+    runSingleRecord(testRecord, "float", "portA:number_greater_than_or_equals(1.3)", emitter);
+    runSingleRecord(testRecord, "double", "portA:number_lesser_than_or_equals(1.6)", emitter);
+    try {
+      runSingleRecord(testRecord, "boolean", "portA:equals(true)", emitter);
+      Assert.fail("Routing on boolean fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "bytes", "portA:equals(bytes)", emitter);
+      Assert.fail("Routing on bytes fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "union", "portA:number_between(3|4)", emitter);
+      Assert.fail("Routing on union fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "enum", "portA:starts_with(EN)", emitter);
+      Assert.fail("Routing on enum fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "map", "portA:ends_with(1)", emitter);
+      Assert.fail("Routing on map fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "array", "portA:number_not_between(1|9)", emitter);
+      Assert.fail("Routing on array fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    try {
+      runSingleRecord(testRecord, "record", "portA:number_lesser_than_or_equals(9)", emitter);
+      Assert.fail("Routing on record fields is not supported, so should fail");
+    } catch (IllegalArgumentException e) {
+      // expected
+    }
+    runSingleRecord(testRecord, "date", "portA:date_after_or_on(2020-05-04)", emitter);
+    runSingleRecord(testRecord, "time_millis", "portA:date_before_or_on(02:03:04)", emitter);
+    runSingleRecord(testRecord, "time_micros", "portA:date_after(00:01:02)", emitter);
+    runSingleRecord(testRecord, "timestamp_millis",
+                    "portA:date_after_or_on(2020-05-02T00:03:20-07:00[America/Los_Angeles])", emitter);
+    runSingleRecord(testRecord, "timestamp_micros",
+                    "portA:date_after_or_on(2020-05-02T00:03:20-07:00[America/Los_Angeles])", emitter);
+    runSingleRecord(testRecord, "decimal", "portA:number_between(9999999.997|9999999.999)", emitter);
+  }
+
   private void testNullRecordToNullPort(@Nullable String nullPortName) throws Exception {
     testNullRecord(RoutingSwitch.Config.NullHandling.NULL_PORT.value(), nullPortName);
   }
@@ -198,20 +297,24 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
       .set("count", "3")
       .build();
 
-    RoutingSwitch.Config config = new RoutingSwitch.Config(
-      "supplier_id", portSpecification, null, null, null, null
-    );
-    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
-    routingSwitch.initialize(new MockTransformContext());
-
     MockMultiOutputEmitter<StructuredRecord> emitter = new MockMultiOutputEmitter<>();
-    routingSwitch.transform(testRecord, emitter);
+    runSingleRecord(testRecord, "supplier_id", portSpecification, emitter);
 
     List<Object> objects = emitter.getEmitted().get(portToRouteTo);
     StructuredRecord record = (StructuredRecord) objects.get(0);
     Assert.assertEquals(testRecord, record);
     objects = emitter.getEmitted().get(portToNotRouteTo);
     Assert.assertNull(objects);
+  }
+
+  private void runSingleRecord(StructuredRecord record, String routingField, String portSpecification,
+                               MockMultiOutputEmitter<StructuredRecord> emitter) throws Exception {
+    RoutingSwitch.Config config = new RoutingSwitch.Config(
+      routingField, portSpecification, null, null, null, null
+    );
+    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
+    routingSwitch.initialize(new MockTransformContext());
+    routingSwitch.transform(record, emitter);
   }
 
   private List<ValidationFailure> validateFunction(String functionName) {

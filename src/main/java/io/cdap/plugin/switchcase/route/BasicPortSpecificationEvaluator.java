@@ -118,7 +118,8 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
       case TIMESTAMP_MICROS:
       case TIMESTAMP_MILLIS:
         return record.getTimestamp(routingField);
-      // TODO: support decimal type?
+      case DECIMAL:
+        return record.getDecimal(routingField);
       default:
         throw new IllegalArgumentException("Unsupported logical type " + logicalType);
     }
@@ -194,7 +195,10 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
     }
 
     if (portSpecifications.isEmpty()) {
-      throw new IllegalArgumentException("The 'portSpecifications' property must be set.");
+      collector.addFailure(
+        String.format("'%s' property cannot be empty.", RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME),
+        "At least 1 port specification must be provided"
+      ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
     }
     return portSpecifications;
   }

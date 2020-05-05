@@ -251,7 +251,7 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
       Schema.Type type = fieldSchema.isNullable() ? fieldSchema.getNonNullable().getType() : fieldSchema.getType();
       if (!ALLOWED_TYPES.contains(type)) {
         collector.addFailure(
-          String.format("Field to split must be one of - STRING, INTEGER, LONG, FLOAT, DOUBLE. " +
+          String.format("Field to split must be one of - STRING, INTEGER, LONG, FLOAT, DOUBLE, BYTES. " +
                           "Found '%s'", fieldSchema), null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
       }
       if (portSpecification == null || portSpecification.isEmpty()) {

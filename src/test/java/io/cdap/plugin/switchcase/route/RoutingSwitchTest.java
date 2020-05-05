@@ -71,7 +71,23 @@ public abstract class RoutingSwitchTest {
                                                            Schema.recordOf(
                                                              "record", Objects.requireNonNull(INPUT.getFields())
                                                            )
-                                                         ));
+                                                         ),
+                                                         Schema.Field.of("date", Schema.of(Schema.LogicalType.DATE)),
+                                                         Schema.Field.of(
+                                                           "time_millis", Schema.of(Schema.LogicalType.TIME_MILLIS)
+                                                         ),
+                                                         Schema.Field.of(
+                                                           "time_micros", Schema.of(Schema.LogicalType.TIME_MICROS)
+                                                         ),
+                                                         Schema.Field.of(
+                                                           "timestamp_millis",
+                                                           Schema.of(Schema.LogicalType.TIMESTAMP_MILLIS)
+                                                         ),
+                                                         Schema.Field.of(
+                                                           "timestamp_micros",
+                                                           Schema.of(Schema.LogicalType.TIMESTAMP_MICROS)
+                                                         ),
+                                                         Schema.Field.of("decimal", Schema.decimalOf(10, 3)));
 
   // TODO: Add an abstract method getMode(), so test can be executed for all modes after adding jexl support
 
@@ -146,12 +162,18 @@ public abstract class RoutingSwitchTest {
 
   @Test
   public void testAllowedTypes() {
+    // Make sure that all supported types can be validated during design time
     Assert.assertTrue(validateType("string").isEmpty());
     Assert.assertTrue(validateType("int").isEmpty());
     Assert.assertTrue(validateType("long").isEmpty());
     Assert.assertTrue(validateType("float").isEmpty());
     Assert.assertTrue(validateType("double").isEmpty());
     Assert.assertTrue(validateType("bytes").isEmpty());
+    Assert.assertTrue(validateType("date").isEmpty());
+    Assert.assertTrue(validateType("time_millis").isEmpty());
+    Assert.assertTrue(validateType("time_micros").isEmpty());
+    Assert.assertTrue(validateType("timestamp_millis").isEmpty());
+    Assert.assertTrue(validateType("timestamp_micros").isEmpty());
     Assert.assertEquals(1, validateType("boolean").size());
     Assert.assertEquals(1, validateType("union").size());
     Assert.assertEquals(1, validateType("enum").size());

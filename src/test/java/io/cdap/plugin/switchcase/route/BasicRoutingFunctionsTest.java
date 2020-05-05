@@ -23,8 +23,9 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.Month;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests for {@link BasicRoutingFunctions}
@@ -189,136 +190,129 @@ public class BasicRoutingFunctionsTest {
     String lower = "9999999999.99997";
     String upper = "9999999999.99999";
     BigDecimal decimal = new BigDecimal(decimalText);
-    byte[] decimalBytes = decimal.unscaledValue().toByteArray();
     BasicRoutingFunction function = new BasicRoutingFunctions.NumberEqualsFunction();
     Schema decimalSchema = Schema.decimalOf(20, 5);
-    Assert.assertTrue(function.evaluate(decimalBytes, decimalText, decimalSchema));
-    Assert.assertFalse(function.evaluate(decimalBytes, lower, decimalSchema));
+    Assert.assertTrue(function.evaluate(decimal, decimalText, decimalSchema));
+    Assert.assertFalse(function.evaluate(decimal, lower, decimalSchema));
     try {
-      Assert.assertFalse(function.evaluate(decimalBytes, "val", decimalSchema));
+      Assert.assertFalse(function.evaluate(decimal, "val", decimalSchema));
       Assert.fail("Expected function to fail for non-numeric value");
     } catch (IllegalArgumentException e) {
       // expected
     }
     function = new BasicRoutingFunctions.NumberBetweenFunction();
-    Assert.assertTrue(function.evaluate(decimalBytes, String.format("%s|%s", lower, upper), decimalSchema));
-    Assert.assertTrue(function.evaluate(decimalBytes, String.format("%s|%s", lower, decimalText), decimalSchema));
-    Assert.assertFalse(function.evaluate(decimalBytes, String.format("%s|%s", upper, upper), decimalSchema));
+    Assert.assertTrue(function.evaluate(decimal, String.format("%s|%s", lower, upper), decimalSchema));
+    Assert.assertTrue(function.evaluate(decimal, String.format("%s|%s", lower, decimalText), decimalSchema));
+    Assert.assertFalse(function.evaluate(decimal, String.format("%s|%s", upper, upper), decimalSchema));
   }
 
   @Test
   public void testDateFunctions() {
     // Epoch 1588575800 = LocalDateTime 2020-05-04T00:03:20
     LocalDate date = LocalDate.of(2020, Month.MAY, 4);
-    // this is how StructuredRecord.setDate stores the date as an integer
-    int epochDays = Math.toIntExact(date.toEpochDay());
     BasicRoutingFunction function = new BasicRoutingFunctions.DateEqualsFunction();
     Schema dateSchema = Schema.of(Schema.LogicalType.DATE);
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-04", dateSchema));
-    Assert.assertFalse(function.evaluate(epochDays, "2020-05-02", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-04", dateSchema));
+    Assert.assertFalse(function.evaluate(date, "2020-05-02", dateSchema));
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "20200502", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "20200502", dateSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateNotEqualsFunction();
     LocalTime time = LocalTime.of(0, 3, 20);
-    long nanos = time.toNanoOfDay();
-    long millis = TimeUnit.NANOSECONDS.toMillis(nanos);
     Schema timeMillisSchema = Schema.of(Schema.LogicalType.TIME_MILLIS);
-    Assert.assertTrue(function.evaluate(millis, "10:15:30", timeMillisSchema));
-    Assert.assertFalse(function.evaluate(millis, "00:03:20", timeMillisSchema));
+    Assert.assertTrue(function.evaluate(time, "10:15:30", timeMillisSchema));
+    Assert.assertFalse(function.evaluate(time, "00:03:20", timeMillisSchema));
     try {
-      Assert.assertFalse(function.evaluate(millis, "00:03:20432", timeMillisSchema));
+      Assert.assertFalse(function.evaluate(time, "00:03:20432", timeMillisSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateAfterFunction();
-    long micros = TimeUnit.NANOSECONDS.toMicros(nanos);
     Schema timeMicrosSchema = Schema.of(Schema.LogicalType.TIME_MICROS);
-    Assert.assertTrue(function.evaluate(micros, "00:00:00", timeMicrosSchema));
-    Assert.assertFalse(function.evaluate(micros, "00:03:20", timeMicrosSchema));
-    Assert.assertFalse(function.evaluate(micros, "00:04:20", timeMicrosSchema));
+    Assert.assertTrue(function.evaluate(time, "00:00:00", timeMicrosSchema));
+    Assert.assertFalse(function.evaluate(time, "00:03:20", timeMicrosSchema));
+    Assert.assertFalse(function.evaluate(time, "00:04:20", timeMicrosSchema));
     try {
-      Assert.assertFalse(function.evaluate(micros, "00:0432:20", timeMicrosSchema));
+      Assert.assertFalse(function.evaluate(time, "00:0432:20", timeMicrosSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateAfterOrOnFunction();
-    long timestampMillis = 1588575800000L;
+    ZonedDateTime zonedDateTime = ZonedDateTime.of(date, time, ZoneId.systemDefault());
     Schema timestampMillisSchema = Schema.of(Schema.LogicalType.TIMESTAMP_MILLIS);
-    Assert.assertTrue(function.evaluate(timestampMillis, "2020-05-02T00:03:20-07:00[America/Los_Angeles]",
+    Assert.assertTrue(function.evaluate(zonedDateTime, "2020-05-02T00:03:20-07:00[America/Los_Angeles]",
                                         timestampMillisSchema));
-    Assert.assertTrue(function.evaluate(timestampMillis, "2020-05-04T00:02:20-07:00[America/Los_Angeles]",
+    Assert.assertTrue(function.evaluate(zonedDateTime, "2020-05-04T00:02:20-07:00[America/Los_Angeles]",
                                         timestampMillisSchema));
-    Assert.assertTrue(function.evaluate(timestampMillis, "2020-05-04T00:03:20-07:00[America/Los_Angeles]",
+    Assert.assertTrue(function.evaluate(zonedDateTime, "2020-05-04T00:03:20-07:00[America/Los_Angeles]",
                                         timestampMillisSchema));
-    Assert.assertFalse(function.evaluate(timestampMillis, "2020-05-04T00:03:21-07:00[America/Los_Angeles]",
+    Assert.assertFalse(function.evaluate(zonedDateTime, "2020-05-04T00:03:21-07:00[America/Los_Angeles]",
                                          timestampMillisSchema));
-    Assert.assertFalse(function.evaluate(timestampMillis, "2020-05-05T00:03:21-07:00[America/Los_Angeles]",
+    Assert.assertFalse(function.evaluate(zonedDateTime, "2020-05-05T00:03:21-07:00[America/Los_Angeles]",
                                          timestampMillisSchema));
     try {
-      Assert.assertFalse(function.evaluate(timestampMillis, "20200502000320-0700", timestampMillisSchema));
+      Assert.assertFalse(function.evaluate(zonedDateTime, "20200502000320-0700", timestampMillisSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateBeforeFunction();
-    long timestampMicros = 1588575800000000L;
     Schema timestampMicrosSchema = Schema.of(Schema.LogicalType.TIMESTAMP_MICROS);
-    Assert.assertTrue(function.evaluate(timestampMicros, "2020-05-04T00:03:21-07:00[America/Los_Angeles]",
+    Assert.assertTrue(function.evaluate(zonedDateTime, "2020-05-04T00:03:21-07:00[America/Los_Angeles]",
                                         timestampMicrosSchema));
-    Assert.assertFalse(function.evaluate(timestampMicros, "2020-05-04T00:03:20-07:00[America/Los_Angeles]",
+    Assert.assertFalse(function.evaluate(zonedDateTime, "2020-05-04T00:03:20-07:00[America/Los_Angeles]",
                                          timestampMicrosSchema));
-    Assert.assertFalse(function.evaluate(timestampMicros, "2020-05-02T00:03:19-07:00[America/Los_Angeles]",
+    Assert.assertFalse(function.evaluate(zonedDateTime, "2020-05-02T00:03:19-07:00[America/Los_Angeles]",
                                          timestampMicrosSchema));
     try {
-      Assert.assertFalse(function.evaluate(timestampMicros, "20200502000320-0700", timestampMicrosSchema));
+      Assert.assertFalse(function.evaluate(zonedDateTime, "20200502000320-0700", timestampMicrosSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateBeforeOrOnFunction();
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-05", dateSchema));
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-04", dateSchema));
-    Assert.assertFalse(function.evaluate(epochDays, "2020-05-02", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-05", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-04", dateSchema));
+    Assert.assertFalse(function.evaluate(date, "2020-05-02", dateSchema));
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "20200502", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "20200502", dateSchema));
       Assert.fail("Should have failed for a non-ISO-8601 date format");
     } catch (DateTimeParseException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateBetweenFunction();
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-03|2020-05-05", dateSchema));
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-04|2020-05-04", dateSchema));
-    Assert.assertFalse(function.evaluate(epochDays, "2020-05-02|2020-05-03", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-03|2020-05-05", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-04|2020-05-04", dateSchema));
+    Assert.assertFalse(function.evaluate(date, "2020-05-02|2020-05-03", dateSchema));
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "2020-05-02", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "2020-05-02", dateSchema));
       Assert.fail("Should have failed because only lower bound was specified");
     } catch (IllegalArgumentException e) {
       // expected
     }
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "2020-05-02|2020-05-05|2020-05-08", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "2020-05-02|2020-05-05|2020-05-08", dateSchema));
       Assert.fail("Should have failed because 3 bounds were specified");
     } catch (IllegalArgumentException e) {
       // expected
     }
     function = new BasicRoutingFunctions.DateNotBetweenFunction();
-    Assert.assertTrue(function.evaluate(epochDays, "2020-05-05|2020-05-06", dateSchema));
-    Assert.assertFalse(function.evaluate(epochDays, "2020-05-04|2020-05-04", dateSchema));
-    Assert.assertFalse(function.evaluate(epochDays, "2020-05-02|2020-05-05", dateSchema));
+    Assert.assertTrue(function.evaluate(date, "2020-05-05|2020-05-06", dateSchema));
+    Assert.assertFalse(function.evaluate(date, "2020-05-04|2020-05-04", dateSchema));
+    Assert.assertFalse(function.evaluate(date, "2020-05-02|2020-05-05", dateSchema));
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "2020-05-02", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "2020-05-02", dateSchema));
       Assert.fail("Should have failed because only lower bound was specified");
     } catch (IllegalArgumentException e) {
       // expected
     }
     try {
-      Assert.assertFalse(function.evaluate(epochDays, "2020-05-02|2020-05-05|2020-05-08", dateSchema));
+      Assert.assertFalse(function.evaluate(date, "2020-05-02|2020-05-05|2020-05-08", dateSchema));
       Assert.fail("Should have failed because 3 bounds were specified");
     } catch (IllegalArgumentException e) {
       // expected

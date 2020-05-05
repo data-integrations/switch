@@ -18,17 +18,13 @@ package io.cdap.plugin.switchcase.route;
 
 import io.cdap.cdap.api.data.schema.Schema;
 import java.math.BigDecimal;
-import java.math.BigInteger;
-import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Class that contains various implementations of {@link BasicRoutingFunction}
@@ -403,8 +399,7 @@ final class BasicRoutingFunctions {
             String.format("Routing function %s must be called on a field with logical type as decimal.", function)
           );
         }
-        byte[] decimalBytes = (byte[]) actualValue;
-        BigDecimal actualDecimal = getDecimal(decimalBytes, schema);
+        BigDecimal actualDecimal = (BigDecimal) actualValue;
         BigDecimal compareDecimal = parseDecimal(compareValue, function);
         return actualDecimal.compareTo(compareDecimal);
       default:
@@ -480,31 +475,19 @@ final class BasicRoutingFunctions {
     return returnValue;
   }
 
-  private static BigDecimal getDecimal(byte[] value, Schema schema) {
-    int scale = schema.getScale();
-    BigDecimal decimal = new BigDecimal(new BigInteger(value), scale);
-    if (decimal.precision() > 38 || decimal.scale() > 9) {
-      throw new IllegalArgumentException(
-        String.format("Invalid precision '%s' and scale '%s'. " +
-                        "Precision must be at most 38 and scale must be at most 9.",
-                      decimal.precision(), decimal.scale()));
-    }
-    return decimal;
-  }
-
   private static int compareDate(Object actualValue, String compareValue, Schema.LogicalType logicalType,
                                  String function) {
     switch(logicalType) {
       case DATE:
-        LocalDate actualDate = LocalDate.ofEpochDay(((Integer) actualValue).longValue());
+        LocalDate actualDate = (LocalDate) actualValue;
         LocalDate compareDate = LocalDate.parse(compareValue, DateTimeFormatter.ISO_LOCAL_DATE);
         return actualDate.compareTo(compareDate);
       case TIME_MILLIS:
-        LocalTime actualTime = LocalTime.ofNanoOfDay(TimeUnit.MILLISECONDS.toNanos(((long) actualValue)));
+        LocalTime actualTime = (LocalTime) actualValue;
         LocalTime compareTime = LocalTime.parse(compareValue, DateTimeFormatter.ISO_LOCAL_TIME);
         return actualTime.compareTo(compareTime);
       case TIME_MICROS:
-        actualTime = LocalTime.ofNanoOfDay(TimeUnit.MICROSECONDS.toNanos(((long) actualValue)));
+        actualTime = (LocalTime) actualValue;
         compareTime = LocalTime.parse(compareValue, DateTimeFormatter.ISO_LOCAL_TIME);
         return actualTime.compareTo(compareTime);
       // NOTE: For timestamps, can't use ISO_LOCAL_DATE_TIME, because in Java 8, ZonedDateTime.parse() fails if the
@@ -513,11 +496,11 @@ final class BasicRoutingFunctions {
       // "2020-05-02T00:03:19-07:00[America/Los_Angeles]" will work, but the input
       // "2020-05-02T00:03:19" (without timezone) will not work.
       case TIMESTAMP_MILLIS:
-        ZonedDateTime actualTimestamp = getZonedDateTime((long) actualValue, TimeUnit.MILLISECONDS);
+        ZonedDateTime actualTimestamp = (ZonedDateTime) actualValue;
         ZonedDateTime compareTimestamp = ZonedDateTime.parse(compareValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
         return actualTimestamp.compareTo(compareTimestamp);
       case TIMESTAMP_MICROS:
-        actualTimestamp = getZonedDateTime((long) actualValue, TimeUnit.MICROSECONDS);
+        actualTimestamp = (ZonedDateTime) actualValue;
         compareTimestamp = ZonedDateTime.parse(compareValue, DateTimeFormatter.ISO_ZONED_DATE_TIME);
         return actualTimestamp.compareTo(compareTimestamp);
       default:
@@ -525,15 +508,6 @@ final class BasicRoutingFunctions {
           String.format("Date function %s called on non-date type %s", function, logicalType)
         );
     }
-  }
-
-  private static ZonedDateTime getZonedDateTime(long ts, TimeUnit unit) {
-    long mod = unit.convert(1, TimeUnit.SECONDS);
-    int fraction = (int) (ts % mod);
-    long tsInSeconds = unit.toSeconds(ts);
-    // create an Instant with time in seconds and fraction which will be stored as nano seconds.
-    Instant instant = Instant.ofEpochSecond(tsInSeconds, unit.toNanos(fraction));
-    return ZonedDateTime.ofInstant(instant, ZoneId.systemDefault());
   }
 
   private static boolean checkDateBetween(Object actualValue, String compareValue, Schema.LogicalType logicalType,

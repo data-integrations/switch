@@ -98,14 +98,12 @@ final class BasicPortSpecification extends PortSpecification {
   }
   private final BasicRoutingFunction routingFunction;
   private final String parameter;
-  private final FailureCollector collector;
 
   BasicPortSpecification(String name, RoutingSwitch.Config.FunctionType functionType, String parameter,
                          FailureCollector collector) {
     super(name);
-    this.routingFunction = fromFunctionType(functionType);
+    this.routingFunction = fromFunctionType(functionType, collector);
     this.parameter = parameter;
-    this.collector = collector;
   }
 
   BasicRoutingFunction getRoutingFunction() {
@@ -116,7 +114,8 @@ final class BasicPortSpecification extends PortSpecification {
     return parameter;
   }
 
-  private BasicRoutingFunction fromFunctionType(RoutingSwitch.Config.FunctionType functionType) {
+  private BasicRoutingFunction fromFunctionType(RoutingSwitch.Config.FunctionType functionType,
+                                                FailureCollector collector) {
     if (!FUNCTIONS.containsKey(functionType)) {
         collector.addFailure(
           "Unknown routing function " + functionType,
