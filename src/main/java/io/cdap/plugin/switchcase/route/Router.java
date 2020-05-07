@@ -31,7 +31,10 @@ import io.cdap.cdap.etl.api.MultiOutputEmitter;
 import io.cdap.cdap.etl.api.MultiOutputPipelineConfigurer;
 import io.cdap.cdap.etl.api.MultiOutputStageConfigurer;
 import io.cdap.cdap.etl.api.SplitterTransform;
+import io.cdap.cdap.etl.api.StageSubmitterContext;
 import io.cdap.cdap.etl.api.TransformContext;
+import io.cdap.cdap.etl.api.lineage.field.FieldOperation;
+import io.cdap.cdap.etl.api.lineage.field.FieldTransformOperation;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
@@ -76,6 +79,33 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
   public void initialize(TransformContext context) throws Exception {
     super.initialize(context);
     evaluator = config.getPortSpecificationEvaluator(context.getFailureCollector());
+  }
+
+  @Override
+  public void prepareRun(StageSubmitterContext context) throws Exception {
+    super.prepareRun(context);
+    List<FieldOperation> fieldOperations = new ArrayList<>();
+    Schema inputSchema = context.getInputSchema();
+    if (inputSchema == null) {
+      return;
+    }
+    List<Schema.Field> fields = inputSchema.getFields();
+    if (fields == null) {
+      return;
+    }
+    List<String> fieldNames = new ArrayList<>();
+    for (Schema.Field field : fields) {
+      fieldNames.add(field.getName());
+    }
+    FieldOperation operation = new FieldTransformOperation(
+      "Route",
+      String.format(
+        "Routed records to the ports %s based on the routing field %s", evaluator.getAllPorts(), config.routingField)
+      ,
+      fieldNames, fieldNames
+    );
+    fieldOperations.add(operation);
+    context.record(fieldOperations);
   }
 
   @Override
