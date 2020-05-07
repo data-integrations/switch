@@ -1,0 +1,281 @@
+{
+    "name": "test-router",
+    "description": "Data Pipeline Application",
+    "artifact": {
+        "name": "cdap-data-pipeline",
+        "version": "6.2.0-SNAPSHOT",
+        "scope": "SYSTEM"
+    },
+    "config": {
+        "resources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "driverResources": {
+            "memoryMB": 2048,
+            "virtualCores": 1
+        },
+        "connections": [
+            {
+                "from": "File",
+                "to": "Wrangler"
+            },
+            {
+                "from": "Wrangler",
+                "to": "Routing-Switch"
+            },
+            {
+                "from": "Routing-Switch",
+                "to": "ZIP_60K_TO_80K",
+                "port": "BETWEEN_60_80"
+            },
+            {
+                "from": "Routing-Switch",
+                "to": "ZIP_80K_PLUS",
+                "port": "GREATER_THAN_80"
+            },
+            {
+                "from": "Routing-Switch",
+                "to": "ZIP_40K_TO_60K",
+                "port": "BETWEEN_40_60"
+            },
+            {
+                "from": "Routing-Switch",
+                "to": "ZIP_BELOW_40K",
+                "port": "LESS_THAN_40"
+            }
+        ],
+        "comments": [],
+        "postActions": [],
+        "properties": {},
+        "processTimingEnabled": true,
+        "stageLoggingEnabled": true,
+        "stages": [
+            {
+                "name": "File",
+                "plugin": {
+                    "name": "File",
+                    "type": "batchsource",
+                    "label": "File",
+                    "artifact": {
+                        "name": "core-plugins",
+                        "version": "2.4.0-SNAPSHOT",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "copyHeader": "false",
+                        "schema": "{\"type\":\"record\",\"name\":\"text\",\"fields\":[{\"name\":\"body\",\"type\":\"string\"}]}",
+                        "path": "file:/Users/bhooshan/Documents/work/product/CDAP/gatekeeping/Contacts.csv",
+                        "format": "text",
+                        "ignoreNonExistingFolders": "false",
+                        "recursive": "false",
+                        "referenceName": "Contacts.csv"
+                    }
+                },
+                "outputSchema": "{\"type\":\"record\",\"name\":\"text\",\"fields\":[{\"name\":\"body\",\"type\":\"string\"}]}",
+                "type": "batchsource",
+                "label": "File",
+                "icon": "icon-file"
+            },
+            {
+                "name": "Wrangler",
+                "plugin": {
+                    "name": "Wrangler",
+                    "type": "transform",
+                    "label": "Wrangler",
+                    "artifact": {
+                        "name": "wrangler-transform",
+                        "version": "4.2.0-SNAPSHOT",
+                        "scope": "SYSTEM"
+                    },
+                    "properties": {
+                        "workspaceId": "af3ef73a-3546-41d6-8e2a-eee5361daafd",
+                        "directives": "parse-as-csv :body ',' false\ndrop body\nrename body_1 First\nrename body_2 Last\nrename body_3 Street\nrename body_4 City\nrename body_5 State\nrename body_6 Zip\nset-type :Zip integer",
+                        "schema": "{\"name\":\"avroSchema\",\"type\":\"record\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}",
+                        "field": "body",
+                        "precondition": "false",
+                        "threshold": "1"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"name\":\"avroSchema\",\"type\":\"record\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "type": "transform",
+                "label": "Wrangler",
+                "icon": "icon-DataPreparation"
+            },
+            {
+                "name": "Routing-Switch",
+                "plugin": {
+                    "name": "RoutingSwitch",
+                    "type": "splittertransform",
+                    "label": "Routing Switch",
+                    "artifact": {
+                        "name": "switch",
+                        "version": "1.0.0-SNAPSHOT",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "defaultHandling": "Send to error port",
+                        "nullHandling": "Send to error port",
+                        "portSpecification": "LESS_THAN_40:number_lesser_than_or_equals(40000),BETWEEN_40_60:number_between(40001|60000),BETWEEN_60_80:number_between(60001|80000),GREATER_THAN_80:number_greater_than(80000)",
+                        "routingField": "Zip"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "BETWEEN_60_80",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "GREATER_THAN_80",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "BETWEEN_40_60",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    },
+                    {
+                        "name": "LESS_THAN_40",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [
+                    {
+                        "name": "Wrangler",
+                        "schema": "{\"name\":\"avroSchema\",\"type\":\"record\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "type": "splittertransform",
+                "label": "Routing Switch",
+                "icon": "fa-plug"
+            },
+            {
+                "name": "ZIP_60K_TO_80K",
+                "plugin": {
+                    "name": "Trash",
+                    "type": "batchsink",
+                    "label": "ZIP_60K_TO_80K",
+                    "artifact": {
+                        "name": "trash-plugin",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "referenceName": "ZIP_60K_TO_80K"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [
+                    {
+                        "name": "Routing Switch",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "type": "batchsink",
+                "label": "ZIP_60K_TO_80K",
+                "icon": "icon-TrashSink"
+            },
+            {
+                "name": "ZIP_80K_PLUS",
+                "plugin": {
+                    "name": "Trash",
+                    "type": "batchsink",
+                    "label": "ZIP_80K_PLUS",
+                    "artifact": {
+                        "name": "trash-plugin",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "referenceName": "ZIP_80K_PLUS"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [
+                    {
+                        "name": "Routing Switch",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "type": "batchsink",
+                "label": "ZIP_80K_PLUS",
+                "icon": "icon-TrashSink"
+            },
+            {
+                "name": "ZIP_40K_TO_60K",
+                "plugin": {
+                    "name": "Trash",
+                    "type": "batchsink",
+                    "label": "ZIP_40K_TO_60K",
+                    "artifact": {
+                        "name": "trash-plugin",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "referenceName": "ZIP_40K_TO_60K"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [],
+                "type": "batchsink",
+                "label": "ZIP_40K_TO_60K",
+                "icon": "icon-TrashSink"
+            },
+            {
+                "name": "ZIP_BELOW_40K",
+                "plugin": {
+                    "name": "Trash",
+                    "type": "batchsink",
+                    "label": "ZIP_BELOW_40K",
+                    "artifact": {
+                        "name": "trash-plugin",
+                        "version": "1.2.0",
+                        "scope": "USER"
+                    },
+                    "properties": {
+                        "referenceName": "ZIP_BELOW_40K"
+                    }
+                },
+                "outputSchema": [
+                    {
+                        "name": "etlSchemaBody",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "inputSchema": [
+                    {
+                        "name": "Routing Switch",
+                        "schema": "{\"type\":\"record\",\"name\":\"etlSchemaBody\",\"fields\":[{\"name\":\"First\",\"type\":[\"string\",\"null\"]},{\"name\":\"Last\",\"type\":[\"string\",\"null\"]},{\"name\":\"Street\",\"type\":[\"string\",\"null\"]},{\"name\":\"City\",\"type\":[\"string\",\"null\"]},{\"name\":\"State\",\"type\":[\"string\",\"null\"]},{\"name\":\"Zip\",\"type\":[\"int\",\"null\"]}]}"
+                    }
+                ],
+                "type": "batchsink",
+                "label": "ZIP_BELOW_40K",
+                "icon": "icon-TrashSink"
+            }
+        ],
+        "schedule": "0 * * * *",
+        "engine": "spark",
+        "numOfRecordsPreview": 100,
+        "maxConcurrentRuns": 1
+    }
+}
