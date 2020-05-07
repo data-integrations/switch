@@ -37,9 +37,9 @@ import java.util.List;
 import javax.annotation.Nullable;
 
 /**
- * Tests for {@link RoutingSwitch} with {@link BasicPortSpecification}
+ * Tests for {@link Router} with {@link BasicPortSpecification}
  */
-public class BasicRoutingSwitchTest extends RoutingSwitchTest {
+public class BasicRouterTest extends RouterTest {
 
   @Test
   public void testNullRecordToErrorByDefault() throws Exception {
@@ -48,7 +48,7 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
 
   @Test
   public void testNullRecordToError() throws Exception {
-    testNullRecord(RoutingSwitch.Config.NullHandling.ERROR_PORT.value(), null);
+    testNullRecord(Router.Config.NullHandling.ERROR_PORT.value(), null);
   }
 
   @Test
@@ -252,7 +252,7 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
   }
 
   private void testNullRecordToNullPort(@Nullable String nullPortName) throws Exception {
-    testNullRecord(RoutingSwitch.Config.NullHandling.NULL_PORT.value(), nullPortName);
+    testNullRecord(Router.Config.NullHandling.NULL_PORT.value(), nullPortName);
   }
 
   private void testNullRecord(@Nullable String nullHandling, @Nullable String outputPortName) throws Exception {
@@ -262,9 +262,9 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
       .set("count", "3")
       .build();
 
-    RoutingSwitch.Config config = new RoutingSwitch.Config("supplier_id", PORT_SPECIFICATION, null, null,
-                                                           nullHandling, outputPortName);
-    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
+    Router.Config config = new Router.Config("supplier_id", PORT_SPECIFICATION, null, null,
+                                             nullHandling, outputPortName);
+    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new Router(config);
     routingSwitch.initialize(new MockTransformContext());
 
     MockMultiOutputEmitter<StructuredRecord> emitter = new MockMultiOutputEmitter<>();
@@ -274,13 +274,13 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
     if (nullHandling == null) {
       nullHandling = config.getNullHandling().value();
     }
-    if (RoutingSwitch.Config.NullHandling.ERROR_PORT.value().equalsIgnoreCase(nullHandling)) {
+    if (Router.Config.NullHandling.ERROR_PORT.value().equalsIgnoreCase(nullHandling)) {
       InvalidEntry<StructuredRecord> invalidEntry = emitter.getErrors().get(0);
       record = invalidEntry.getInvalidRecord();
     } else {
-      outputPortName = outputPortName == null ? RoutingSwitch.Config.DEFAULT_NULL_PORT_NAME : outputPortName;
+      outputPortName = outputPortName == null ? Router.Config.DEFAULT_NULL_PORT_NAME : outputPortName;
       List<Object> objects = emitter.getEmitted().get(outputPortName);
-      if (RoutingSwitch.Config.DefaultHandling.SKIP.value().equalsIgnoreCase(nullHandling)) {
+      if (Router.Config.DefaultHandling.SKIP.value().equalsIgnoreCase(nullHandling)) {
         Assert.assertNull(objects);
         return;
       }
@@ -309,17 +309,17 @@ public class BasicRoutingSwitchTest extends RoutingSwitchTest {
 
   private void runSingleRecord(StructuredRecord record, String routingField, String portSpecification,
                                MockMultiOutputEmitter<StructuredRecord> emitter) throws Exception {
-    RoutingSwitch.Config config = new RoutingSwitch.Config(
+    Router.Config config = new Router.Config(
       routingField, portSpecification, null, null, null, null
     );
-    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
+    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new Router(config);
     routingSwitch.initialize(new MockTransformContext());
     routingSwitch.transform(record, emitter);
   }
 
   private List<ValidationFailure> validateFunction(String functionName) {
     String portSpecification = String.format("Supplier 1:%s(supplier1)", functionName);
-    RoutingSwitch.Config config = new RoutingSwitch.Config("supplier_id", portSpecification, null, null, null, null);
+    Router.Config config = new Router.Config("supplier_id", portSpecification, null, null, null, null);
     MockFailureCollector collector = new MockFailureCollector();
     config.validate(INPUT, collector);
     return collector.getValidationFailures();

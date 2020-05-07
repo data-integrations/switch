@@ -47,16 +47,16 @@ import javax.annotation.Nullable;
  * SWITCH..CASE statement. 
  */
 @Plugin(type = SplitterTransform.PLUGIN_TYPE)
-@Name("RoutingSwitch")
+@Name("Router")
 @Description("Routes a record to an appropriate port based on the evaluation of a simple function on the value of " +
   "one of its fields.")
-public class RoutingSwitch extends SplitterTransform<StructuredRecord, StructuredRecord> {
-  private static final Logger LOG = LoggerFactory.getLogger(RoutingSwitch.class);
+public class Router extends SplitterTransform<StructuredRecord, StructuredRecord> {
+  private static final Logger LOG = LoggerFactory.getLogger(Router.class);
 
   private final Config config;
   private PortSpecificationEvaluator evaluator;
 
-  RoutingSwitch(Config config) {
+  Router(Config config) {
     this.config = config;
   }
 
@@ -145,7 +145,7 @@ public class RoutingSwitch extends SplitterTransform<StructuredRecord, Structure
   }
 
   /**
-   * {@link PluginConfig} for {@link RoutingSwitch}
+   * {@link PluginConfig} for {@link Router}
    */
   static class Config extends PluginConfig {
     private static final List<Schema.Type> ALLOWED_TYPES = new ArrayList<>();
