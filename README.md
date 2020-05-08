@@ -8,8 +8,8 @@ A collection of plugins that provide switch...case transforms for [CDAP Pipeline
 
 The following plugins are included:
 
-1. **[Routing Switch](docs/RoutingSwitch-splittertransform.md):** A splitter transform plugin that can route records 
-to a given output port, based on predefined rules applied on one of the fields in the input.
+1. **[Router](docs/Router-splittertransform.md):** A splitter transform plugin that can route records to a given output 
+port, based on predefined rules applied on one or more fields in the input.
 
 ## Need Help?
 

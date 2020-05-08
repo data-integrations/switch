@@ -1,9 +1,9 @@
-# Routing Switch
+# Routing
 
 Description
 -----------
-This transform routes a record to an appropriate port based on the evaluation of a simple function on the value of one
-of its fields. It is implemented as a Splitter Transform.
+This transform routes a record to an appropriate port based on the evaluation of an expression on the value of one
+or more of its fields. It is implemented as a Splitter Transform.
 
 Use case
 --------

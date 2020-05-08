@@ -2,7 +2,7 @@
   "metadata": {
     "spec-version": "1.5"
   },
-  "display-name" : "Routing Switch",
+  "display-name" : "Router",
   "configuration-groups": [
     {
       "label": "Basic",
