@@ -134,7 +134,7 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
     if (Strings.isNullOrEmpty(portSpecification)) {
       collector.addFailure(
         "Could not find any port specifications.", "At least one port specification must be provided."
-      ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+      ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       throw collector.getOrThrowException();
     }
     for (String singlePortSpec : Splitter.on(',').trimResults().split(portSpecification)) {
@@ -144,14 +144,14 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
           String.format(
             "Could not find ':' separating port name from its routing specification in '%s'.", singlePortSpec
           ), "The configuration for each port should contain a port name and its routing specification separated by :."
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
       String portName = singlePortSpec.substring(0, colonIdx).trim();
       if (!portNames.add(portName)) {
         collector.addFailure(
           String.format("Cannot create multiple ports with the same name '%s'.", portName),
           "Please specify a unique port name for each specification."
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
 
       String functionAndParameter = singlePortSpec.substring(colonIdx + 1).trim();
@@ -160,19 +160,19 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
         collector.addFailure(
           String.format("Could not find '(' in function '%s'. ", functionAndParameter),
           "Please specify routing functions as as function(parameter)."
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
       String functionStr = functionAndParameter.substring(0, leftParanIdx).trim();
-      RoutingSwitch.Config.FunctionType function;
+      Router.Config.FunctionType function;
       try {
-        function = RoutingSwitch.Config.FunctionType.valueOf(functionStr.toUpperCase());
+        function = Router.Config.FunctionType.valueOf(functionStr.toUpperCase());
       } catch (IllegalArgumentException e) {
         collector.addFailure(
           String.format("Invalid routing function '%s'.", functionStr),
           String.format(
-            "A routing function must be  one of %s.", Joiner.on(',').join(RoutingSwitch.Config.FunctionType.values())
+            "A routing function must be  one of %s.", Joiner.on(',').join(Router.Config.FunctionType.values())
           )
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
         throw collector.getOrThrowException();
       }
 
@@ -180,14 +180,14 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
         collector.addFailure(
           String.format("Could not find closing ')' in function '%s'.", functionAndParameter),
           "Functions must be specified as function(parameter)."
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
       String parameter = functionAndParameter.substring(leftParanIdx + 1, functionAndParameter.length() - 1).trim();
       if (parameter.isEmpty()) {
         collector.addFailure(
           String.format("Invalid function '%s'.", functionAndParameter),
           "A parameter must be provided as an argument."
-        ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+        ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
 
       LOG.debug("Adding port config: name = {}; function = {}; parameter = {}", portName, function, parameter);
@@ -196,9 +196,9 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
 
     if (portSpecifications.isEmpty()) {
       collector.addFailure(
-        String.format("'%s' property cannot be empty.", RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME),
+        String.format("'%s' property cannot be empty.", Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME),
         "At least 1 port specification must be provided."
-      ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
+      ).withConfigProperty(Router.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
     }
     return portSpecifications;
   }

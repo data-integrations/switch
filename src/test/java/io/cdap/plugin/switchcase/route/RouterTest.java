@@ -31,9 +31,9 @@ import java.util.Objects;
 import javax.annotation.Nullable;
 
 /**
- * Tests for {@link RoutingSwitch} that apply to all {@link PortSpecification port specifications}
+ * Tests for {@link Router} that apply to all {@link PortSpecification port specifications}
  */
-public abstract class RoutingSwitchTest {
+public abstract class RouterTest {
   static final Schema INPUT =
     Schema.recordOf("input",
                     Schema.Field.of("supplier_id", Schema.nullableOf(Schema.of(Schema.Type.STRING))),
@@ -98,7 +98,7 @@ public abstract class RoutingSwitchTest {
 
   @Test
   public void testDefaultedRecordToError() throws Exception {
-    testDefaultedRecord(RoutingSwitch.Config.DefaultHandling.ERROR_PORT.value(), null);
+    testDefaultedRecord(Router.Config.DefaultHandling.ERROR_PORT.value(), null);
   }
 
   @Test
@@ -113,12 +113,12 @@ public abstract class RoutingSwitchTest {
 
   @Test
   public void testDefaultedRecordSkipped() throws Exception {
-    testDefaultedRecord(RoutingSwitch.Config.DefaultHandling.SKIP.value(), null);
+    testDefaultedRecord(Router.Config.DefaultHandling.SKIP.value(), null);
   }
 
   @Test
   public void testNullRecordSkipped() throws Exception {
-    testDefaultedRecord(RoutingSwitch.Config.NullHandling.SKIP.value(), null);
+    testDefaultedRecord(Router.Config.NullHandling.SKIP.value(), null);
   }
 
   @Test
@@ -142,18 +142,18 @@ public abstract class RoutingSwitchTest {
       .build();
 
     String portSpecification = "Supplier 1:equals(supplier1),Supplier 2:equals(supplier2),Supplier 3:equals(supplier3)";
-    RoutingSwitch.Config config = new RoutingSwitch.Config(
-      "supplier_id", portSpecification, RoutingSwitch.Config.DefaultHandling.DEFAULT_PORT.value(), "Default Port",
-      RoutingSwitch.Config.NullHandling.NULL_PORT.value(), "Null Port"
+    Router.Config config = new Router.Config(
+      "supplier_id", portSpecification, Router.Config.DefaultHandling.DEFAULT_PORT.value(), "Default Port",
+      Router.Config.NullHandling.NULL_PORT.value(), "Null Port"
     );
-    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
-    routingSwitch.initialize(new MockTransformContext());
+    SplitterTransform<StructuredRecord, StructuredRecord> router = new Router(config);
+    router.initialize(new MockTransformContext());
 
     MockMultiOutputEmitter<StructuredRecord> emitter = new MockMultiOutputEmitter<>();
 
-    routingSwitch.transform(testRecord1, emitter);
-    routingSwitch.transform(testRecord2, emitter);
-    routingSwitch.transform(testRecord3, emitter);
+    router.transform(testRecord1, emitter);
+    router.transform(testRecord2, emitter);
+    router.transform(testRecord3, emitter);
 
     Assert.assertEquals(testRecord1, emitter.getEmitted().get("Supplier 1").get(0));
     Assert.assertEquals(testRecord2, emitter.getEmitted().get("Supplier 2").get(0));
@@ -183,7 +183,7 @@ public abstract class RoutingSwitchTest {
   }
 
   private void testDefaultedRecordToDefaultPort(@Nullable String defaultPortName) throws Exception {
-    testDefaultedRecord(RoutingSwitch.Config.DefaultHandling.DEFAULT_PORT.value(), defaultPortName);
+    testDefaultedRecord(Router.Config.DefaultHandling.DEFAULT_PORT.value(), defaultPortName);
   }
 
   private void testDefaultedRecord(@Nullable String defaultHandling, @Nullable String outputPortName) throws Exception {
@@ -193,25 +193,25 @@ public abstract class RoutingSwitchTest {
       .set("count", "3")
       .build();
 
-    RoutingSwitch.Config config = new RoutingSwitch.Config("supplier_id", PORT_SPECIFICATION,
-                                                           defaultHandling, outputPortName,
-                                                           null, null);
-    SplitterTransform<StructuredRecord, StructuredRecord> routingSwitch = new RoutingSwitch(config);
-    routingSwitch.initialize(new MockTransformContext());
+    Router.Config config = new Router.Config("supplier_id", PORT_SPECIFICATION,
+                                             defaultHandling, outputPortName,
+                                             null, null);
+    SplitterTransform<StructuredRecord, StructuredRecord> router = new Router(config);
+    router.initialize(new MockTransformContext());
 
     MockMultiOutputEmitter<StructuredRecord> emitter = new MockMultiOutputEmitter<>();
-    routingSwitch.transform(testRecord, emitter);
+    router.transform(testRecord, emitter);
     StructuredRecord record;
     if (defaultHandling == null) {
       defaultHandling = config.getDefaultHandling().value();
     }
-    if (RoutingSwitch.Config.DefaultHandling.ERROR_PORT.value().equalsIgnoreCase(defaultHandling)) {
+    if (Router.Config.DefaultHandling.ERROR_PORT.value().equalsIgnoreCase(defaultHandling)) {
       InvalidEntry<StructuredRecord> invalidEntry = emitter.getErrors().get(0);
       record = invalidEntry.getInvalidRecord();
     } else {
-      outputPortName = outputPortName == null ? RoutingSwitch.Config.DEFAULT_PORT_NAME : outputPortName;
+      outputPortName = outputPortName == null ? Router.Config.DEFAULT_PORT_NAME : outputPortName;
       List<Object> objects = emitter.getEmitted().get(outputPortName);
-      if (RoutingSwitch.Config.DefaultHandling.SKIP.value().equalsIgnoreCase(defaultHandling)) {
+      if (Router.Config.DefaultHandling.SKIP.value().equalsIgnoreCase(defaultHandling)) {
         Assert.assertNull(objects);
         return;
       }
@@ -222,7 +222,7 @@ public abstract class RoutingSwitchTest {
 
   private List<ValidationFailure> validateType(String fieldName) {
     String portSpecification = "Supplier 1:equals(supplier1)";
-    RoutingSwitch.Config config = new RoutingSwitch.Config(fieldName, portSpecification, null, null, null, null);
+    Router.Config config = new Router.Config(fieldName, portSpecification, null, null, null, null);
     MockFailureCollector collector = new MockFailureCollector();
     config.validate(ALL_TYPES_SCHEMA, collector);
     return collector.getValidationFailures();
