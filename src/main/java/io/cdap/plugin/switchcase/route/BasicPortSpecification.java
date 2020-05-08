@@ -63,17 +63,47 @@ final class BasicPortSpecification extends PortSpecification {
       RoutingSwitch.Config.FunctionType.NUMBER_NOT_BETWEEN,
       new BasicRoutingFunctions.NumberNotBetweenFunction()
     );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_EQUALS,
+      new BasicRoutingFunctions.DateEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_NOT_EQUALS,
+      new BasicRoutingFunctions.DateNotEqualsFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_AFTER,
+      new BasicRoutingFunctions.DateAfterFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_AFTER_OR_ON,
+      new BasicRoutingFunctions.DateAfterOrOnFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BEFORE,
+      new BasicRoutingFunctions.DateBeforeFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BEFORE_OR_ON,
+      new BasicRoutingFunctions.DateBeforeOrOnFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_BETWEEN,
+      new BasicRoutingFunctions.DateBetweenFunction()
+    );
+    FUNCTIONS.put(
+      RoutingSwitch.Config.FunctionType.DATE_NOT_BETWEEN,
+      new BasicRoutingFunctions.DateNotBetweenFunction()
+    );
   }
   private final BasicRoutingFunction routingFunction;
   private final String parameter;
-  private final FailureCollector collector;
 
   BasicPortSpecification(String name, RoutingSwitch.Config.FunctionType functionType, String parameter,
                          FailureCollector collector) {
     super(name);
-    this.routingFunction = fromFunctionType(functionType);
+    this.routingFunction = fromFunctionType(functionType, collector);
     this.parameter = parameter;
-    this.collector = collector;
   }
 
   BasicRoutingFunction getRoutingFunction() {
@@ -84,7 +114,8 @@ final class BasicPortSpecification extends PortSpecification {
     return parameter;
   }
 
-  private BasicRoutingFunction fromFunctionType(RoutingSwitch.Config.FunctionType functionType) {
+  private BasicRoutingFunction fromFunctionType(RoutingSwitch.Config.FunctionType functionType,
+                                                FailureCollector collector) {
     if (!FUNCTIONS.containsKey(functionType)) {
         collector.addFailure(
           "Unknown routing function " + functionType,

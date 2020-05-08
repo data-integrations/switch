@@ -20,6 +20,7 @@ import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import io.cdap.cdap.api.data.format.StructuredRecord;
+import io.cdap.cdap.api.data.schema.Schema;
 import io.cdap.cdap.etl.api.FailureCollector;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -53,22 +54,75 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
 
   @Override
   public String getPort(StructuredRecord record) throws PortNotSpecifiedException {
-    Object value = record.get(routingField);
-    // if the value is null, emit it based on the selected null handling option
-    if (value == null) {
-      LOG.debug("Found null value for {}.", routingField);
-      throw new PortNotSpecifiedException(PortNotSpecifiedException.Reason.NULL);
-    }
-    String textValue = String.valueOf(value);
+    Object value = getRoutingFieldValue(record);
+    Schema schema = getRoutingFieldSchema(record);
     for (BasicPortSpecification portSpecification : portSpecifications) {
       String portName = portSpecification.getName();
       BasicRoutingFunction routingFunction = portSpecification.getRoutingFunction();
-      if (routingFunction.evaluate(textValue, portSpecification.getParameter())) {
+      if (routingFunction.evaluate(value, portSpecification.getParameter(), schema)) {
         return portName;
       }
     }
 
     throw new PortNotSpecifiedException(PortNotSpecifiedException.Reason.DEFAULT);
+  }
+
+  private Schema getRoutingFieldSchema(StructuredRecord record) {
+    Schema.Field field = record.getSchema().getField(routingField);
+    if (field == null) {
+      // this should never happen, since validation ensures that the routing field exists in the schema
+      throw new IllegalArgumentException(String.format("Routing field %s not found in input schema", routingField));
+    }
+    return field.getSchema();
+  }
+
+  private Object getRoutingFieldValue(StructuredRecord record) throws PortNotSpecifiedException {
+    Object returnValue = record.get(routingField);
+    if (returnValue == null) {
+      LOG.debug("Found null value for routing field {}.", routingField);
+      throw new PortNotSpecifiedException(PortNotSpecifiedException.Reason.NULL);
+    }
+    Schema schema = getRoutingFieldSchema(record);
+    Schema.Type type = schema.isNullable() ? schema.getNonNullable().getType() : schema.getType();
+    switch (type) {
+      case STRING:
+      case FLOAT:
+      case DOUBLE:
+        return returnValue;
+      case INT:
+      case LONG:
+      case BYTES:
+        // INT can be INT, DATE, TIME_MILLIS
+        // LONG can be LONG, TIMESTAMP_MILLIS, TIMESTAMP_MACROS, TIME_MACROS
+        // BYTES can be decimal
+        Schema.LogicalType logicalType = schema.getLogicalType();
+        if (logicalType == null) {
+          return returnValue;
+        }
+        return getLogicalValue(record, logicalType);
+      default:
+        // this should never happen since validation already validates the data types
+        throw new IllegalArgumentException(
+          String.format("Unsupported data type %s for routing field %s.", type, routingField)
+        );
+    }
+  }
+
+  private Object getLogicalValue(StructuredRecord record, Schema.LogicalType logicalType) {
+    switch (logicalType) {
+      case DATE:
+        return record.getDate(routingField);
+      case TIME_MICROS:
+      case TIME_MILLIS:
+        return record.getTime(routingField);
+      case TIMESTAMP_MICROS:
+      case TIMESTAMP_MILLIS:
+        return record.getTimestamp(routingField);
+      case DECIMAL:
+        return record.getDecimal(routingField);
+      default:
+        throw new IllegalArgumentException("Unsupported logical type " + logicalType);
+    }
   }
 
   /**
@@ -89,14 +143,14 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
         collector.addFailure(
           String.format(
             "Could not find ':' separating port name from its routing specification in '%s'.", singlePortSpec
-          ), "The configuration for each port should contain a port name and its routing specification separated by :"
+          ), "The configuration for each port should contain a port name and its routing specification separated by :."
         ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
       String portName = singlePortSpec.substring(0, colonIdx).trim();
       if (!portNames.add(portName)) {
         collector.addFailure(
           String.format("Cannot create multiple ports with the same name '%s'.", portName),
-          "Please specify a unique port name for each specification"
+          "Please specify a unique port name for each specification."
         ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
 
@@ -125,7 +179,7 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
       if (!functionAndParameter.endsWith(")")) {
         collector.addFailure(
           String.format("Could not find closing ')' in function '%s'.", functionAndParameter),
-          "Functions must be specified as function(parameter)"
+          "Functions must be specified as function(parameter)."
         ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
       String parameter = functionAndParameter.substring(leftParanIdx + 1, functionAndParameter.length() - 1).trim();
@@ -141,7 +195,10 @@ public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluat
     }
 
     if (portSpecifications.isEmpty()) {
-      throw new IllegalArgumentException("The 'portSpecifications' property must be set.");
+      collector.addFailure(
+        String.format("'%s' property cannot be empty.", RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME),
+        "At least 1 port specification must be provided."
+      ).withConfigProperty(RoutingSwitch.Config.BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
     }
     return portSpecifications;
   }
