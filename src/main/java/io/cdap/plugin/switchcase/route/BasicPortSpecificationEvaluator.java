@@ -32,7 +32,7 @@ import java.util.Set;
 /**
  * A {@link PortSpecificationEvaluator} that evaluates port specifications in the basic routing mode
  */
-public class BasicPortSpecificationEvaluator implements PortSpecificationEvaluator {
+final class BasicPortSpecificationEvaluator implements PortSpecificationEvaluator {
   private static final Logger LOG = LoggerFactory.getLogger(BasicPortSpecificationEvaluator.class);
 
   private final String routingField;

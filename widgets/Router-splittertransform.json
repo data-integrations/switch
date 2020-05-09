@@ -8,6 +8,25 @@
       "label": "Basic",
       "properties": [
         {
+          "widget-type": "radio-group",
+          "label": "Route Specification Mode",
+          "name": "routeSpecificationMode",
+          "widget-attributes": {
+            "layout": "inline",
+            "default": "basic",
+            "options": [
+              {
+                "id": "basic",
+                "label": "Basic"
+              },
+              {
+                "id": "mvel",
+                "label": "MVEL"
+              }
+            ]
+          }
+        },
+        {
           "widget-type": "input-field-selector",
           "label": "Routing field",
           "name": "routingField",
@@ -147,6 +166,17 @@
             "required-fields": ["portSpecification"],
             "missing-required-fields-message": "'Port Specification' is required to fetch schema."
           }
+        },
+        {
+          "widget-type": "keyvalue-encoded",
+          "label": "MVEL Port Specification",
+          "name": "mvelPortSpecification",
+          "widget-attributes": {
+            "delimiter": ",",
+            "kv-delimiter": ":",
+            "key-placeholder": "Port Name",
+            "value-placeholder": "MVEL Expression"
+          }
         }
       ]
     },
@@ -188,6 +218,33 @@
           "widget-type": "textbox",
           "label": "Null Port",
           "name": "nullPort"
+        }
+      ]
+    }
+  ],
+  "filters": [
+    {
+      "name": "BasicRouting",
+      "condition": {
+        "expression": "routeSpecificationMode == 'basic'"
+      },
+      "show": [
+        {
+          "name": "routingField"
+        },
+        {
+          "name": "portSpecification"
+        }
+      ]
+    },
+    {
+      "name": "MVELRouting",
+      "condition": {
+        "expression": "routeSpecificationMode == 'mvel'"
+      },
+      "show": [
+        {
+          "name": "mvelPortSpecification"
         }
       ]
     }

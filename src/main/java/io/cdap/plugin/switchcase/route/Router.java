@@ -67,7 +67,7 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
     Schema inputSchema = stageConfigurer.getInputSchema();
     FailureCollector failureCollector = stageConfigurer.getFailureCollector();
     config.validate(inputSchema, failureCollector);
-    evaluator = config.getPortSpecificationEvaluator(failureCollector);
+    evaluator = config.getPortSpecificationEvaluator(inputSchema, failureCollector);
     Map<String, Schema> schemas = generateSchemas(inputSchema);
     stageConfigurer.setOutputSchemas(schemas);
   }
@@ -75,7 +75,7 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
   @Override
   public void initialize(TransformContext context) throws Exception {
     super.initialize(context);
-    evaluator = config.getPortSpecificationEvaluator(context.getFailureCollector());
+    evaluator = config.getPortSpecificationEvaluator(context.getInputSchema(), context.getFailureCollector());
   }
 
   @Override
@@ -163,15 +163,32 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
     @VisibleForTesting
     static final String DEFAULT_NULL_PORT_NAME = "Null";
 
+    private static final String ROUTE_SPECIFICATION_MODE_PROPERTY_NAME = "routeSpecificationMode";
     private static final String ROUTING_FIELD_PROPERTY_NAME = "routingField";
     static final String BASIC_PORT_SPECIFICATION_PROPERTY_NAME = "portSpecification";
+    static final String MVEL_PORT_SPECIFICATION_PROPERTY_NAME = "mvelPortSpecification";
     private static final String DEFAULT_HANDLING_PROPERTY_NAME = "defaultHandling";
     private static final String NULL_HANDLING_PROPERTY_NAME = "nullHandling";
+    @VisibleForTesting
+    static final String BASIC_MODE_NAME = "basic";
+    @VisibleForTesting
+    static final String MVEL_MODE_NAME = "mvel";
 
-    //TODO: Add support for mode to switch between basic and jexl
+    @Name(ROUTE_SPECIFICATION_MODE_PROPERTY_NAME)
+    @Description("The mode in which you would like to provide the routing specification. The basic mode allows you " +
+      "to specify multiple simple routing rules, where each rule operates on a single field in the input schema. " +
+      "For basic, the Routing Field and Port Specification are required. The MVEL mode allows you to specify " +
+      "complex routing rules, which can operate on multiple input fields in a single rule. In the MVEL mode, " +
+      "you can use MVEL expressions to specify the routing configuration. Also specify the MVEL Port Specification " +
+      "for the MVEL mode. Defaults to Basic.")
+    @Macro
+    @Nullable
+    private final String routeSpecificationMode;
+
     @Name(ROUTING_FIELD_PROPERTY_NAME)
     @Description("Specifies the field in the input schema on which the rules in the _Port Specification_ should be " +
-      "applied, to determine the port where the record should be routed to.")
+      "applied, to determine the port where the record should be routed to. Only required when Route Specification " +
+      "Mode is Basic.")
     @Macro
     @Nullable
     private final String routingField;
@@ -182,10 +199,24 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
       "where each rule has the format [port-name]:[function-name]([parameter-name]). [port-name] is the name of the " +
       "port to route the record to if the rule is satisfied. Refer to the documentation for a list of available " +
       "functions that you can use as a [function-name]. [parameter-name] is the parameter based on which the " +
-      "selected function evaluates the value of the routing field.")
+      "selected function evaluates the value of the routing field. Only required when Route Specification Mode is " +
+      "Basic.")
     @Macro
     @Nullable
     private final String portSpecification;
+
+    @Name(MVEL_PORT_SPECIFICATION_PROPERTY_NAME)
+    @Description("Specifies a ',' separated list of ports, and the MVEL expression to route the record to the port " +
+      "in the format [port-name]:[mvel-expression]. All the input fields are available as variables in the MVEL " +
+      "expression. Additionally, utility methods from common Java classes such as Math, Guava Strings, Apache " +
+      "Commons Lang StringUtils are also available for use in the port specification rules. To avoid conflicts " +
+      "with delimiters, it is recommended to URL-encode the MVEL expressions. Some example expressions: " +
+      "PortA:StringUtils.startsWith(part_id%2C'a'), PortB:StringUtils.contains(supplier%2C'abc'), " +
+      "PortC:Math.ceil(amount) < 40. Each MVEL expression in the MVEL Port Specification must return a boolean " +
+      "value. Only required when Route Specification Mode is MVEL.")
+    @Macro
+    @Nullable
+    private final String mvelPortSpecification;
 
     @Name(DEFAULT_HANDLING_PROPERTY_NAME)
     @Description("Determines the way to handle records whose value for the field to match on doesn't match any of " +
@@ -214,10 +245,13 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
     @Nullable
     private final String nullPort;
 
-    Config(@Nullable String routingField, @Nullable String portSpecification, @Nullable String defaultHandling,
-           @Nullable String defaultPort, @Nullable String nullHandling, @Nullable String nullPort) {
+    Config(@Nullable String routeSpecificationMode, @Nullable String routingField, @Nullable String portSpecification,
+           @Nullable String mvelPortSpecification, @Nullable String defaultHandling, @Nullable String defaultPort,
+           @Nullable String nullHandling, @Nullable String nullPort) {
+      this.routeSpecificationMode = routeSpecificationMode;
       this.routingField = routingField;
       this.portSpecification = portSpecification;
+      this.mvelPortSpecification = mvelPortSpecification;
       this.defaultHandling = defaultHandling == null ? DefaultHandling.ERROR_PORT.value : defaultHandling;
       this.defaultPort = defaultPort == null ? DEFAULT_PORT_NAME : defaultPort;
       this.nullHandling = nullHandling == null ? NullHandling.ERROR_PORT.value : nullHandling;
@@ -226,7 +260,12 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
 
     @VisibleForTesting
     void validate(Schema inputSchema, FailureCollector collector) throws IllegalArgumentException {
-      // TODO: Add validation code for mode after adding jexl mode
+      if (!BASIC_MODE_NAME.equalsIgnoreCase(routeSpecificationMode) &&
+        !MVEL_MODE_NAME.equalsIgnoreCase(routeSpecificationMode)) {
+        collector.addFailure(String.format("Unknown route specification mode %s", routeSpecificationMode),
+                             String.format("Please specify one of %s or %s", BASIC_MODE_NAME, MVEL_MODE_NAME))
+          .withConfigProperty(ROUTE_SPECIFICATION_MODE_PROPERTY_NAME);
+      }
       Optional<DefaultHandling> handling = DefaultHandling.fromValue(defaultHandling);
       if (!handling.isPresent()) {
         collector.addFailure(String.format("Unsupported default handling value %s", DEFAULT_HANDLING_PROPERTY_NAME),
@@ -234,8 +273,21 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
           .withConfigProperty(DEFAULT_HANDLING_PROPERTY_NAME);
       }
 
-      // TODO: Add validation for jexl mode after adding jexl support
+      if (BASIC_MODE_NAME.equalsIgnoreCase(routeSpecificationMode)) {
+        validateBasicPortSpecification(inputSchema, collector);
+      } else if (MVEL_MODE_NAME.equalsIgnoreCase(routeSpecificationMode)) {
+        if (mvelPortSpecification == null || mvelPortSpecification.isEmpty()) {
+          collector.addFailure("In MVEL mode, MVEL port specification must be provided", null)
+            .withConfigProperty(MVEL_PORT_SPECIFICATION_PROPERTY_NAME);
+          return;
+        }
+      }
 
+      // only done for validation, so ignoring return value.
+      getPortSpecificationEvaluator(inputSchema, collector);
+    }
+
+    private void validateBasicPortSpecification(Schema inputSchema, FailureCollector collector) {
       if (routingField == null || routingField.isEmpty()) {
         collector.addFailure("Routing field is required when routing mode is basic.",
                              "Please provide the routing field").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
@@ -259,8 +311,6 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
         collector.addFailure("No port specifications defined.", "Please provide at least 1 port specification")
           .withConfigProperty(BASIC_PORT_SPECIFICATION_PROPERTY_NAME);
       }
-      // only done for validation, so ignoring return value.
-      getPortSpecificationEvaluator(collector);
     }
 
     private List<String> getSupportedTypes() {
@@ -274,9 +324,18 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
       return supportedTypes;
     }
 
-    private PortSpecificationEvaluator getPortSpecificationEvaluator(FailureCollector collector) {
-      // TODO: Add code for switching evaluators based on config
-      return new BasicPortSpecificationEvaluator(routingField, portSpecification, collector);
+    private PortSpecificationEvaluator getPortSpecificationEvaluator(Schema inputSchema, FailureCollector collector) {
+      if (BASIC_MODE_NAME.equalsIgnoreCase(routeSpecificationMode)) {
+        return new BasicPortSpecificationEvaluator(routingField, portSpecification, collector);
+      }
+      if (MVEL_MODE_NAME.equalsIgnoreCase(routeSpecificationMode)) {
+        return new MVELPortSpecificationEvaluator(mvelPortSpecification, inputSchema, collector);
+      }
+      collector.addFailure(
+        String.format("Invalid route specification mode '%s'. Must be one of '%s' or '%s'",
+                      routeSpecificationMode, BASIC_MODE_NAME, MVEL_MODE_NAME), null
+      ).withConfigProperty("routeSpecificationMode");
+      throw collector.getOrThrowException();
     }
 
     DefaultHandling getDefaultHandling() {

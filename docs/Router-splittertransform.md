@@ -16,15 +16,30 @@ you can use this plugin to set up a pipeline that routes records to different pr
 
 Properties
 ----------
+**Route Specification Mode**: The mode in which you would like to provide the routing specification. The Basic mode 
+allows you to specify multiple simple routing rules, where each rule operates on a single field in the input schema. 
+For basic, the Routing Field and Port Specification are required. The MVEL mode allows you to specify complex routing 
+rules, which can operate on multiple input fields in a single rule. In the MVEL mode, you can use MVEL expressions to 
+specify the routing configuration. Also specify the MVEL Port Specification for the MVEL mode. Defaults to Basic.
+
 **Routing Field**: Specifies the field in the input schema on which the rules in the _Port Specification_ should be
-applied, to determine the port where the record should be routed to.
+applied, to determine the port where the record should be routed to. Only required when Route Specification Mode is 
+Basic.
 
 **Port Specification**: Specifies the rules to determine the port where the record should be routed to. Rules are
 applied on the value of the routing field. The port specification is expressed as a comma-separated list of rules,
 where each rule has the format ``[port-name]:[function-name]([parameter-name])``. ``[port-name]`` is the name of the 
 port to route the record to if the rule is satisfied. Refer to the table below for a list of available functions. 
 ``[parameter-name]`` is the parameter based on which the selected function evaluates the value of the 
-routing field.
+routing field. Only required when Route Specification Mode is Basic.
+
+**MVEL Port Specification**: Specifies a ',' separated list of ports, and the MVEL expression to route the record to 
+the port in the format [port-name]:[mvel-expression]. All the input fields are available as variables in the MVEL 
+expression. Additionally, utility methods from common Java classes such as Math, Guava Strings, Apache ]Commons Lang 
+StringUtils are also available for use in the port specification rules. To avoid conflicts with delimiters, it is 
+recommended to URL-encode MVEL expressions. Some example expressions: `PortA:StringUtils.startsWith(part_id%2C'a')`, 
+`PortB:StringUtils.contains(supplier%2C'abc')`, `PortC:Math.ceil(amount) < 40`. Each MVEL expression in the MVEL Port 
+Specification must return a boolean value. Only required when Route Specification Mode is MVEL. 
 
 **Default handling**: Determines the way to handle records whose value for the field to match on doesn't match any of
 the rules defined in the port specification. Defaulting records can either be skipped ("Skip"), sent to a specific port
