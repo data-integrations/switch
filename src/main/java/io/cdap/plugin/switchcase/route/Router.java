@@ -35,6 +35,7 @@ import io.cdap.cdap.etl.api.TransformContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,7 +45,7 @@ import javax.annotation.Nullable;
 
 /**
  * {@link SplitterTransform} to route records to appropriate ports based on conditions specified similar to a
- * SWITCH..CASE statement. 
+ * SWITCH..CASE statement.
  */
 @Plugin(type = SplitterTransform.PLUGIN_TYPE)
 @Name("Router")
@@ -128,6 +129,26 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
   }
 
   private Map<String, Schema> generateSchemas(Schema inputSchema) {
+    Schema emptySchema = Schema.recordOf("record", Collections.emptyList());
+    Map<String, Schema> schemas = new HashMap<>();
+    // Add all ports from the port config to the schemas
+    for (String port : evaluator.getAllPorts()) {
+      schemas.put(port, inputSchema);
+    }
+    // If defaulting records need to be sent to their own port, add that port to the schemas
+    if (Config.DefaultHandling.DEFAULT_PORT == config.getDefaultHandling()) {
+      schemas.put(config.defaultPort, inputSchema);
+    }
+    // If null values need to be sent to their own port, add that port to the schemas
+    if (Config.NullHandling.NULL_PORT == config.getNullHandling()) {
+      schemas.put(config.nullPort, inputSchema);
+    }
+    return schemas;
+  }
+
+  private Map<String, Schema> generateFlexSchemas() {
+    Schema inputSchema = Schema.of(Schema.Type.NULL);
+
     Map<String, Schema> schemas = new HashMap<>();
     // Add all ports from the port config to the schemas
     for (String port : evaluator.getAllPorts()) {
@@ -149,6 +170,7 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
    */
   static class Config extends PluginConfig {
     private static final List<Schema.Type> ALLOWED_TYPES = new ArrayList<>();
+
     static {
       ALLOWED_TYPES.add(Schema.Type.STRING);
       ALLOWED_TYPES.add(Schema.Type.INT);
@@ -158,12 +180,18 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
       // only supported for LogicalType.DECIMAL
       ALLOWED_TYPES.add(Schema.Type.BYTES);
     }
+
     @VisibleForTesting
     static final String DEFAULT_PORT_NAME = "Default";
     @VisibleForTesting
     static final String DEFAULT_NULL_PORT_NAME = "Null";
+    @VisibleForTesting
+    //TODO: set false
+    static final Boolean DEFAULT_ALLOW_FLEXIBLE_SCHEMA = true;
 
+    private static final String ALLOW_FLEXIBLE_SCHEMA_PROPERTY_NAME = "allowFlexibleSchema";
     private static final String ROUTING_FIELD_PROPERTY_NAME = "routingField";
+    private static final String FLEX_ROUTING_FIELD_PROPERTY_NAME = "flexRoutingField";
     static final String BASIC_PORT_SPECIFICATION_PROPERTY_NAME = "portSpecification";
     private static final String DEFAULT_HANDLING_PROPERTY_NAME = "defaultHandling";
     private static final String NULL_HANDLING_PROPERTY_NAME = "nullHandling";
@@ -175,6 +203,19 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
     @Macro
     @Nullable
     private final String routingField;
+
+    @Name(FLEX_ROUTING_FIELD_PROPERTY_NAME)
+    @Description("Specifies the field in the input schema on which the rules in the _Port Specification_ should be " +
+      "applied, to determine the port where the record should be routed to.")
+    @Macro
+    @Nullable
+    private final String flexRoutingField;
+
+    @Name(ALLOW_FLEXIBLE_SCHEMA_PROPERTY_NAME)
+    @Macro
+    @Nullable
+    @Description("Allow Flexible Schemas. If enabled, the record schemas won't be validated..")
+    private final Boolean allowFlexibleSchema;
 
     @Name(BASIC_PORT_SPECIFICATION_PROPERTY_NAME)
     @Description("Specifies the rules to determine the port where the record should be routed to. Rules are applied " +
@@ -222,10 +263,25 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
       this.defaultPort = defaultPort == null ? DEFAULT_PORT_NAME : defaultPort;
       this.nullHandling = nullHandling == null ? NullHandling.ERROR_PORT.value : nullHandling;
       this.nullPort = nullPort == null ? DEFAULT_NULL_PORT_NAME : nullPort;
+      this.allowFlexibleSchema = false;
+      this.flexRoutingField = null;
+    }
+
+    Config(@Nullable String routingField, @Nullable String portSpecification, @Nullable String defaultHandling,
+           @Nullable String defaultPort, @Nullable String nullHandling, @Nullable String nullPort,
+           @Nullable Boolean allowFlexibleSchema, @Nullable String flexRoutingField) {
+      this.routingField = routingField;
+      this.portSpecification = portSpecification;
+      this.defaultHandling = defaultHandling == null ? DefaultHandling.ERROR_PORT.value : defaultHandling;
+      this.defaultPort = defaultPort == null ? DEFAULT_PORT_NAME : defaultPort;
+      this.nullHandling = nullHandling == null ? NullHandling.ERROR_PORT.value : nullHandling;
+      this.nullPort = nullPort == null ? DEFAULT_NULL_PORT_NAME : nullPort;
+      this.allowFlexibleSchema = allowFlexibleSchema == null ? DEFAULT_ALLOW_FLEXIBLE_SCHEMA : allowFlexibleSchema;
+      this.flexRoutingField = allowFlexibleSchema == null ? null : flexRoutingField;
     }
 
     @VisibleForTesting
-    void validate(Schema inputSchema, FailureCollector collector) throws IllegalArgumentException {
+    void validate(@Nullable Schema inputSchema, FailureCollector collector) throws IllegalArgumentException {
       // TODO: Add validation code for mode after adding jexl mode
       Optional<DefaultHandling> handling = DefaultHandling.fromValue(defaultHandling);
       if (!handling.isPresent()) {
@@ -234,26 +290,37 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
           .withConfigProperty(DEFAULT_HANDLING_PROPERTY_NAME);
       }
 
-      // TODO: Add validation for jexl mode after adding jexl support
-
-      if (routingField == null || routingField.isEmpty()) {
-        collector.addFailure("Routing field is required when routing mode is basic.",
-                             "Please provide the routing field").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+      if (allowFlexibleSchema != null && allowFlexibleSchema) {
+        if (flexRoutingField == null || flexRoutingField.isEmpty()) {
+          collector
+            .addFailure("Routing field is required when routing mode is basic.",
+                        "Please provide the routing field")
+            .withConfigProperty(FLEX_ROUTING_FIELD_PROPERTY_NAME);
+        }
+      } else {
+        // TODO: Add validation for jexl mode after adding jexl support
+        //Validate Routing Field
+        if (routingField == null || routingField.isEmpty()) {
+          collector.addFailure("Routing field is required when routing mode is basic.",
+                               "Please provide the routing field").withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+        }
       }
-      Schema.Field field = inputSchema.getField(routingField);
-      if (field == null) {
-        collector.addFailure(String.format("Routing field %s not found in the input schema", routingField),
-                             "Please provide a field that exists in the input schema")
-          .withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
-        throw collector.getOrThrowException();
-      }
-      Schema fieldSchema = field.getSchema();
-      Schema.Type type = fieldSchema.isNullable() ? fieldSchema.getNonNullable().getType() : fieldSchema.getType();
-      if (!ALLOWED_TYPES.contains(type)) {
-        collector.addFailure(
-          String.format("Routing field '%s' must be of one of the following types - %s. Found '%s'",
-                        routingField, getSupportedTypes(), fieldSchema.getDisplayName()),
-          null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+      if (allowFlexibleSchema == null || !allowFlexibleSchema) {
+        Schema.Field field = inputSchema.getField(routingField);
+        if (field == null) {
+          collector.addFailure(String.format("Routing field %s not found in the input schema", routingField),
+                               "Please provide a field that exists in the input schema")
+            .withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+          throw collector.getOrThrowException();
+        }
+        Schema fieldSchema = field.getSchema();
+        Schema.Type type = fieldSchema.isNullable() ? fieldSchema.getNonNullable().getType() : fieldSchema.getType();
+        if (!ALLOWED_TYPES.contains(type)) {
+          collector.addFailure(
+            String.format("Routing field '%s' must be of one of the following types - %s. Found '%s'",
+                          routingField, getSupportedTypes(), fieldSchema.getDisplayName()),
+            null).withConfigProperty(ROUTING_FIELD_PROPERTY_NAME);
+        }
       }
       if (portSpecification == null || portSpecification.isEmpty()) {
         collector.addFailure("No port specifications defined.", "Please provide at least 1 port specification")
@@ -276,7 +343,11 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
 
     private PortSpecificationEvaluator getPortSpecificationEvaluator(FailureCollector collector) {
       // TODO: Add code for switching evaluators based on config
-      return new BasicPortSpecificationEvaluator(routingField, portSpecification, collector);
+      if (allowFlexibleSchema != null && allowFlexibleSchema) {
+        return new BasicPortSpecificationEvaluator(flexRoutingField, portSpecification, collector);
+      } else {
+        return new BasicPortSpecificationEvaluator(routingField, portSpecification, collector);
+      }
     }
 
     DefaultHandling getDefaultHandling() {

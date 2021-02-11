@@ -2,18 +2,38 @@
   "metadata": {
     "spec-version": "1.5"
   },
-  "display-name" : "Router",
+  "display-name": "Router",
   "configuration-groups": [
     {
       "label": "Basic",
       "properties": [
         {
+          "widget-type": "toggle",
+          "label": "Allow flexible schemas",
+          "name": "allowFlexibleSchema",
+          "widget-attributes": {
+            "on": {
+              "value": "true",
+              "label": "Yes"
+            },
+            "off": {
+              "value": "false",
+              "label": "No"
+            },
+            "default": "false"
+          }
+        },
+        {
           "widget-type": "input-field-selector",
           "label": "Routing field",
           "name": "routingField",
           "widget-attributes": {
-
           }
+        },
+        {
+          "widget-type": "textbox",
+          "label": "Routing field",
+          "name": "flexRoutingField"
         },
         {
           "widget-type": "function-dropdown-with-alias",
@@ -144,7 +164,9 @@
             "widget": "outputSchema",
             "output-property": "schema",
             "plugin-method": "outputSchema",
-            "required-fields": ["portSpecification"],
+            "required-fields": [
+              "portSpecification"
+            ],
             "missing-required-fields-message": "'Port Specification' is required to fetch schema."
           }
         }
@@ -193,5 +215,31 @@
     }
   ],
   "emit-errors": true,
-  "outputs": []
+  "outputs": [],
+  "filters": [
+    {
+      "name": "showRoutingField",
+      "condition": {
+        "expression": "allowFlexibleSchema == 'false'"
+      },
+      "show": [
+        {
+          "type": "property",
+          "name": "routingField"
+        }
+      ]
+    },
+    {
+      "name": "showFlexRoutingField",
+      "condition": {
+        "expression": "allowFlexibleSchema == 'true'"
+      },
+      "show": [
+        {
+          "type": "property",
+          "name": "flexRoutingField"
+        }
+      ]
+    }
+  ]
 }
