@@ -97,6 +97,7 @@ public class Router extends SplitterTransform<StructuredRecord, StructuredRecord
       } else {
         emitNullValue(input, emitter);
       }
+      return;
     }
     // if a port is found, emit to the port
     emitter.emit(port, input);
